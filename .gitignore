@@ -1,1 +1,4 @@
 dataset/*
+scripts/.ipynb_checkpoints/
+scripts/__pycache__/
+
