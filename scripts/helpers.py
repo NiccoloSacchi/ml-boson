@@ -78,10 +78,8 @@ def load_data_from_ex02(sub_sample=True, add_outlier=False):
 
     return height, weight, gender
 
-def build_model_data(height, weight):
+def build_model_data(x, y):
     """Form (y,tX) to get regression data in matrix form."""
-    y = weight
-    x = height
     num_samples = len(y)
     tx = np.c_[np.ones(num_samples), x]
     return y, tx
