@@ -7,11 +7,17 @@ import matplotlib.pyplot as plt
 # STANDARDIZE X
 def standardize(x):
     """Standardize the original data set."""
-    mean_x = np.mean(x)
+    mean_x = np.mean(x, axis=0)
     x = x - mean_x
-    std_x = np.std(x)
+    std_x = np.std(x, axis=0)
     x = x / std_x
     return x, mean_x, std_x
+
+def de_standardize(x, mean_x, std_x):
+    """Reverse the procedure of standardization."""
+    x = x * std_x
+    x = x + mean_x
+    return x
 
 # BUILD TX
 def build_poly(x, degree):
@@ -30,11 +36,17 @@ class CostFunction():
     MSE = 1
     RMSE = 2
     MAE = 3
+    PROB = 4 #  probabilistical cost function, better for labelling   
 
 def compute_error(y, tx, w): 
     """ Compute the error e=y-X.T*w """
     # the error is independent from the used cost function 
     return y - tx @ w
+
+# logistic function used to map y to [0, 1]
+def logistic_func(z):
+    ez = np.exp(z)
+    return ez/(1+ez)
 
 # use MSE by default
 def compute_loss(y, tx, w, costfunc=CostFunction.MSE):
@@ -45,6 +57,9 @@ def compute_loss(y, tx, w, costfunc=CostFunction.MSE):
         return np.sqrt(2*compute_loss(y, tx, w, costfunc=CostFunction.MSE))
     if costfunc is CostFunction.MAE:
         return compute_loss_with_error(compute_error(y, tx, w), CostFunction.MAE)
+    if costfunc is CostFunction.PROB:
+        txw = tx@w
+        return (np.log(1+np.exp(txw))-y*txw).sum()
     return "Error, cost function not recognized"
     
 def compute_loss_with_error(e, costfunc=CostFunction.MSE):
@@ -81,10 +96,15 @@ def grid_search(y, tx, costfunc=CostFunction.MSE, num_intervals=10, w0_interval=
     return loss_min, np.array(w_best)
 
 """ Gradient computation """
-def compute_gradient(y, tx, w):
+def compute_gradient(y, tx, w, costfunc=CostFunction.MSE):
     """ Compute the gradient (derivative of L(w) dimensions) from scratch. 
     N.B. To be used only with a differentiable cost function, e.g. with MSE, not with MAE. """
-    return compute_gradient_with_e(tx, compute_error(y, tx, w))
+    if costfunc is CostFunction.MSE:
+        return compute_gradient_with_e(tx, compute_error(y, tx, w))
+    if costfunc is CostFunction.PROB:
+        logistic_func_ = np.vectorize(logistic_func) # so to apply the function element-wise to tx@w
+        return (tx.T@(logistic_func_(tx@w).reshape(-1, 1)-y))[:, 0]
+    return "Error, cost function not recognized"
 
 def compute_gradient_with_e(tx, e):
     """ Compute the gradient (derivative of L(w) dimensions) from X and error. 
@@ -136,7 +156,7 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, print_output=True, plot
 
 
 """ Gradient descent and Stochastic gradient descent """
-def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_output=True, plot_losses=True):
+def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_output=True, plot_losses=True, costfunc=CostFunction.MSE):
     """ w(t+1) = w(t)-gamma*gradient(L(w)) where L(w) can be computed on a subset of variables depending on batch_size.
     If a different batch_size is not passed then L(w) is computed using all the points.
     Can not be used with the non-differentiable MAE.  """
@@ -147,12 +167,13 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_ou
     # if the batch_size has not been set then do gradient_descent
     if batch_size < 0: 
         batch_size = tx.shape[0]
-        plt.scatter(-1,  compute_loss(y, tx, initial_w, costfunc=CostFunction.MSE), color='red')
+        plt.scatter(-1,  compute_loss(y, tx, initial_w, costfunc), color='red')
 
     if plot_losses:
         plt.grid()
+        plt.title('Gradient descent: the loss should decrease')
         plt.yscale('log')
-        plt.ylabel('log(mse loss)')
+        plt.ylabel('log(loss)')
         plt.xlabel('iteration n')
         
     # Define parameters to store w and loss
@@ -167,11 +188,11 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_ou
             # The latter will be used just to check if the algorithm is converging
             
             # compute next w
-            g = compute_gradient(y_batch, tx_batch, w) # relative to only the batch
+            g = compute_gradient(y_batch, tx_batch, w, costfunc) # relative to only the batch
             w = w - gamma*g  
 
             # compute the loss L(w)
-            curr_loss = compute_loss(y, tx, w, costfunc=CostFunction.MSE) # relative to all the points
+            curr_loss = compute_loss(y, tx, w, costfunc) # relative to all the points
             
             if curr_loss < loss_min:
                 loss_min = curr_loss
@@ -184,7 +205,7 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_ou
             if plot_losses:
                 plt.scatter(n_iter, curr_loss, color='red') # check the losses are strictly decreasing
     
-    return loss_min, w_best
+    return loss_min, np.array(w_best)
 
 def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
     """
