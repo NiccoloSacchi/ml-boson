@@ -4,12 +4,49 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# workflow:
+# 1. load data
+# 2. fill_nan (possibly without passing a subs_func)
+# 3. drop_nan_rows/column (only if you didn't passed a subs_func)
+# 4. standardize
+# 5. build_poly
+# 6. train model
+
+# -nan_values: a map from column indices to the respective nan value
+# e.g. nan_values = {5: -999, 20: 0, ...} (only for column which contain 
+# an invalid value)
+# -subs_func: a function, e.g. np.nanmean, np.nanmedian, np.nanstd, that will
+# be applied column-wise and whose result will be placed in the nan values
+# of that column. If this function is not passed than it will keep np.nan values.
+def fill_nan(x, nan_values={}, subs_func=None):
+    """ Deals with the nan values: identify and substitute them.
+    Run this function before the 'standardize' one. """
+    x = x.astype(float) 
+    for i in nan_values.keys():
+        col = x[:, i]
+         # first set to nan those values
+        col[col==nan_values[i]] = np.nan 
+        # then substitute the nan values
+        if subs_func != None:
+            col[np.isnan(col)] = subs_func(col)
+    return x  
+    
+# drop all the rows containing np.nan
+def drop_nan_rows(x):
+    return x[~np.isnan(x).any(axis=1)]
+
+# drop all the rows containing np.nan
+def drop_nan_columns(x):
+    return x[:, ~np.isnan(x).any(axis=0)]
+
 # STANDARDIZE X
 def standardize(x):
     """Standardize the original data set."""
-    mean_x = np.mean(x, axis=0)
+        
+    # compute mean and std ignoring nan values
+    mean_x = np.nanmean(x, axis=0)
     x = x - mean_x
-    std_x = np.std(x, axis=0)
+    std_x = np.nanstd(x, axis=0)
     x = x / std_x
     return x, mean_x, std_x
 
@@ -17,8 +54,8 @@ def de_standardize(x, mean_x, std_x):
     """Reverse the procedure of standardization."""
     x = x * std_x
     x = x + mean_x
-    return x
-
+    return x    
+    
 # BUILD TX
 def build_poly(x, degree):
     """polynomial basis functions for input data x, for j=0 up to j=degree."""
