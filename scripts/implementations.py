@@ -3,6 +3,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from proj1_helpers import predict_labels
+from types import SimpleNamespace 
 
 # workflow:
 # 1. load data
@@ -42,7 +44,6 @@ def drop_nan_columns(x):
 # STANDARDIZE X
 def standardize(x):
     """Standardize the original data set."""
-        
     # compute mean and std ignoring nan values
     mean_x = np.nanmean(x, axis=0)
     x = x - mean_x
@@ -73,7 +74,8 @@ class CostFunction():
     MSE = 1
     RMSE = 2
     MAE = 3
-    PROB = 4 #  probabilistical cost function, better for labelling   
+    PROB = 4 #  probabilistical cost function, better for categorical labelling
+    SUCCESS_RATIO = 5
 
 def compute_error(y, tx, w): 
     """ Compute the error e=y-X.T*w """
@@ -88,15 +90,31 @@ def logistic_func(z):
 # use MSE by default
 def compute_loss(y, tx, w, costfunc=CostFunction.MSE):
     """ Compute the cost L(w) from scratch and depending on the chosen cost function """
+    
     if costfunc is CostFunction.MSE:
         return compute_loss_with_error(compute_error(y, tx, w), CostFunction.MSE)
+    
     if costfunc is CostFunction.RMSE:
         return np.sqrt(2*compute_loss(y, tx, w, costfunc=CostFunction.MSE))
+    
     if costfunc is CostFunction.MAE:
         return compute_loss_with_error(compute_error(y, tx, w), CostFunction.MAE)
+    
     if costfunc is CostFunction.PROB:
         txw = tx@w
         return (np.log(1+np.exp(txw))-y*txw).sum()
+    
+    if costfunc is CostFunction.SUCCESS_RATIO:
+        # Given the weigths and a test set it compute the prediction for every input
+        # and returns the ratio of correct predictions.
+        # This cost function is not continue and therefore not differentialbe, therefore
+        # can be used only to evaluate the final model or for a grid search. 
+        # However we have 30 dimension, therefore the grid search has a high complexity:
+        # O(N^30) where N is the amount of trials per dimension.
+        pred = predict_labels(w, tx)
+        num_correct = np.sum(pred==y)
+        return num_correct/len(y)
+    
     return "Error, cost function not recognized"
     
 def compute_loss_with_error(e, costfunc=CostFunction.MSE):
@@ -201,6 +219,8 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_ou
     # TODO 
     # 1. implement a decreasing gamma
     
+    # if costfunc = PROB the y should be made only of 1s and 0s (just for the training phase).
+    
     # if the batch_size has not been set then do gradient_descent
     if batch_size < 0: 
         batch_size = tx.shape[0]
@@ -290,5 +310,109 @@ def ridge_regression(y, tx, lambda_):
     """ Implement the ridge regression """
     A = tx.T @ tx + 2*tx.shape[0]*lambda_*np.identity(tx.shape[1]) # DxD
     b = tx.T @ y # Dx1
-    w = np.linalg.solve(A, b)
-    return compute_loss(y, tx, w, costfunc=CostFunction.MSE), w
+    try:
+        w = np.linalg.solve(A, b)
+        return compute_loss(y, tx, w, costfunc=CostFunction.MSE), w
+    except Exception as e:
+        print("When solving the system in ridge regression: " + str(e))
+        return -1, np.zeros(tx.shape[1])
+
+# TOOLS TEST THE MODEL    
+    
+def build_k_indices(y, num_sets, seed):
+    """ Build k groups of indices for k-fold."""
+    N = y.shape[0] # number of data points
+    set_size = int(N / num_sets) # size of the sets
+    np.random.seed(seed)
+    indices = np.random.permutation(N)
+    k_indices = [indices[k * set_size: (k + 1) * set_size] for k in range(num_sets)]
+    return np.array(k_indices)
+
+
+# Given the hyper parameters of the function (degree, lambdas, ...) and a training set
+# returns the ratio of correct predictions of the built model
+def cross_validation(y, x, k_indices, k, lambda_, degree):
+    """ return the loss of ridge regression. """
+    test = SimpleNamespace()
+    test.y = y[k_indices[k]]
+    test.x = x[k_indices[k]]
+    test.tx = build_poly(test.x, degree)
+    
+    train = SimpleNamespace()
+    train_indices = np.concatenate((k_indices[:k], k_indices[k+1:])).reshape(1, -1)[0]
+    train.y = y[train_indices]
+    train.x = x[train_indices]
+    train.tx = build_poly(train.x, degree)
+    
+    _, w = ridge_regression(train.y, train.tx, lambda_)
+    
+    train.loss = compute_loss(train.y, train.tx, w, CostFunction.RMSE)
+    test.loss = compute_loss(test.y, test.tx, w, CostFunction.RMSE)
+    
+    return train.loss, test.loss
+
+# given the sets of indices and k returns the kth set (the test set)
+# and collect the other k-1 sets in one set (the training set)
+def get_kth_set(y, tx, k_indices, kth):
+    test = SimpleNamespace()
+    test.y = y[k_indices[kth]]
+    test.tx = tx[k_indices[kth]]
+    
+    train = SimpleNamespace()
+    train_indices = np.concatenate((k_indices[:kth], k_indices[kth+1:])).reshape(1, -1)[0]
+    train.y = y[train_indices]
+    train.tx = tx[train_indices]
+    
+    return train, test
+
+
+# PLOTS
+# ratio_tr: matrix of training ratios of correct predictions (one row per degree, one column per lambda value)
+# ratio_te: matrix of test ratios of correct predictions     (one row per degree, one column per lambda value)
+# degree_list: list of degrees tried, will plot one figure per degree
+# x_axis: values for the x axis
+# log_axis_x: if lambdas was generated with np.logspace you may want to represent the x axis with a logarithmic scale
+def cross_validation_visualization(ratio_tr, ratio_te, degree_list, x_axis, x_label="x label", log_axis_x=False):
+    # ratio_tr is a matrix #figure x #points (it has one list per figure with the y-coord of the points)
+    plt.cla()
+    plt.clf()
+
+    if log_axis_x == True:
+       #curr_ax.semilogx() does not plot anything with this one...
+        x_axis = np.log(x_axis)
+            
+    nfigures = len(degree_list)
+    
+    n_cols = 3
+    n_rows = int(np.ceil(nfigures/n_cols))
+
+    fig, ax = plt.subplots(n_rows, n_cols)
+    
+    width =  n_cols*4
+    heigth = n_rows*4
+    fig.set_size_inches(width, heigth)
+
+    for row in range(n_rows):
+        for col in range(n_cols):
+            cur_figure = row*col + col
+            if cur_figure < nfigures:
+                if n_rows > 1:
+                    curr_ax = ax[row][col]
+                else:
+                    curr_ax = ax[col]
+
+                curr_ax.scatter(x_axis, ratio_tr[cur_figure], color='red', s=12)
+                curr_ax.scatter(x_axis, ratio_te[cur_figure], color='blue', s=12)
+                
+                curr_ax.grid()
+                curr_ax.legend(['training', 'test'])
+                curr_ax.set_ylim([0, 1])
+                curr_ax.set_title("Degree: " + str(degree_list[cur_figure]))
+                curr_ax.set_ylabel("Ratio of correct predictions")
+                curr_ax.set_xlabel(x_label)
+                #for tick in ax[row][col].get_xticklabels():
+                #    tick.set_rotation(45)
+
+    plt.tight_layout()
+    # plt.savefig("visualize_polynomial_regression")
+    plt.show()
