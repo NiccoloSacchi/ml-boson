@@ -256,8 +256,8 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_ou
                 w_best = w
             
             if print_output:
-                print("Gradient Descent({bi}/{ti}): loss={l}, w0={w0}, w1={w1}".format(
-                      bi=n_iter, ti=max_iters - 1, l=curr_loss, w0=w[0], w1=w[1]))
+                print("Gradient Descent({bi}/{ti}): loss={l}, nth_w={w}".format(
+                      bi=n_iter, ti=max_iters - 1, l=curr_loss, nth_w=w[0]))
 
             if plot_losses:
                 plt.scatter(n_iter, curr_loss, color='red') # check the losses are strictly decreasing
@@ -415,4 +415,68 @@ def cross_validation_visualization(ratio_tr, ratio_te, degree_list, x_axis, x_la
 
     plt.tight_layout()
     # plt.savefig("visualize_polynomial_regression")
+    plt.show()
+    
+
+# ratios: list of matrix of ratios of correct predictions 
+    # one matrix per model (if you have just one model you pass an array with only that matrix)
+    # one row per degree
+    # one column per hyperparameter (e.g. lambda) value tried
+    # every cell represent the ratios of success corresponding to the model with a certain degree and a certain
+    # value of an hyperparameter  
+# degree_list: list of degrees tried, will plot one figure per degree
+# x_axis: values for the x axis
+# log_axis_x: if lambdas was generated with np.logspace you may want to represent the x axis with a logarithmic scale
+def ratios_visualization(ratios, degree_list, x_axis, x_label="x label", log_axis_x=False, save_figure_with_name=""):
+    # ratio_tr is a matrix #figure x #points (it has one list per figure with the y-coord of the points)
+    plt.cla()
+    plt.clf()
+
+    if len(ratios)>10:
+        print("Pass less that 10 models")
+        return
+    
+    if log_axis_x == True:
+       #curr_ax.semilogx() does not plot anything with this one...
+        x_axis = np.log(x_axis)
+            
+    nmodels = len(ratios)
+    # one color per model 
+    colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan'][:nmodels] 
+              
+    nfigures = len(degree_list)
+    
+    n_cols = 3
+    n_rows = int(np.ceil(nfigures/n_cols))
+
+    fig, ax = plt.subplots(n_rows, n_cols)
+    
+    width =  n_cols*4
+    heigth = n_rows*4
+    fig.set_size_inches(width, heigth)
+
+    for row in range(n_rows):
+        for col in range(n_cols):
+            cur_figure = row*col + col
+            if cur_figure < nfigures:
+                if n_rows > 1:
+                    curr_ax = ax[row][col]
+                else:
+                    curr_ax = ax[col]
+
+                for model in range(nmodels): # represent all the models in the same figure
+                    curr_ax.scatter(x_axis, ratios[model][cur_figure], color=colors[model], s=12)
+                
+                curr_ax.grid()
+                curr_ax.legend(["model "+str(model) for model in range(nmodels)])
+                curr_ax.set_ylim([0, 1])
+                curr_ax.set_title("Degree: " + str(degree_list[cur_figure]))
+                curr_ax.set_ylabel("Ratio of correct predictions")
+                curr_ax.set_xlabel(x_label)
+                #for tick in ax[row][col].get_xticklabels():
+                #    tick.set_rotation(45)
+
+    plt.tight_layout()
+    if save_figure_with_name != "":
+        plt.savefig(save_figure_with_name)
     plt.show()
