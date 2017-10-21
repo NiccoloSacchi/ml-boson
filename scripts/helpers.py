@@ -27,6 +27,45 @@ def load_boson_data(sub_sample=True):
     
     return ids_tr,predictions_tr,data_tr, ids_te, data_te
 
+
+def equalize_predictions(predictions,data):
+    count_s = 0
+    count_b = 0
+    
+    for pred in predictions:
+        if pred==1:
+            count_s += 1
+        else:
+            count_b +=1
+    
+    
+    diff = count_s - count_b
+    
+    original_size = data.shape[0]
+    
+    if diff<0: #if there are more background than signal, we remove data from background
+        removed=0
+        i = 0
+        while removed < -diff and i< original_size+diff:
+            if predictions[i] == -1:
+                data=np.delete(data,i,0)
+                predictions=np.delete(predictions,i,0)
+                removed += 1
+            i+= 1
+    else: #else we remove signal data
+        removed=0
+        i = 0
+        while removed < diff and i< original_size-diff:
+            if predictions[i] == 1:
+                data=np.delete(data,i,0)
+                predictions=np.delete(predictions,i,0)
+                removed+= 1
+            i+= 1
+        
+    return predictions,data
+
+
+
 def load_data(sub_sample=True, add_outlier=False):
     """Load data and convert it to the metric system."""
     path_dataset = "height_weight_genders.csv"
