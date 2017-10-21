@@ -23,6 +23,19 @@ def load_csv_data(data_path, sub_sample=False):
 
     return yb, input_data, ids
 
+def load_csv_data(data_path, sample_number):
+    """Loads data and returns y (class labels), tX (features) and ids (event ids)"""
+    y = np.genfromtxt(data_path, delimiter=",", skip_header=1, dtype=str, usecols=1,max_rows = sample_number)
+    x = np.genfromtxt(data_path, delimiter=",", skip_header=1,max_rows = sample_number)
+    ids = x[:, 0].astype(np.int)
+    input_data = x[:, 2:]
+
+    # convert class labels from strings to binary (-1,1)
+    yb = np.ones(len(y))
+    yb[np.where(y=='b')] = -1
+
+    return yb, input_data, ids
+
 
 def predict_labels(weights, data):
     """Generates class predictions given weights, and a test data matrix"""

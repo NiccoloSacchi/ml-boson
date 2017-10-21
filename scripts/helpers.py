@@ -39,8 +39,7 @@ def equalize_predictions(predictions,data):
             count_b +=1
     
     
-    diff = count_s - count_b
-    
+    diff = count_s - count_b    
     original_size = data.shape[0]
     
     if diff<0: #if there are more background than signal, we remove data from background
