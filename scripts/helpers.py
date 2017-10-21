@@ -2,7 +2,23 @@
 """some helper functions."""
 
 import numpy as np
+from implementations import *
+from proj1_helpers import *
 
+def test_model_and_export(data_u,ids_u,w,degree):
+    #u as "unknown"
+    tx_u = build_poly(data_u, degree) 
+    predictions = predict_labels(w,tx_u)
+
+    export_data = np.vstack((ids_u, predictions)).T.astype(int)
+    header = ["Id","Prediction"]
+    print(export_data.shape)
+    export_data = np.vstack((header,export_data))
+    print(header)
+    
+    np.savetxt('../dataset/export.csv', export_data, fmt='%s', delimiter=',')
+    
+    
 #if sub_sample = true, we only load the first 100 lines of each set
 #for now only the first 100 lines version works
 def load_boson_data(sub_sample=True):
@@ -63,6 +79,88 @@ def equalize_predictions(predictions,data):
         
     return predictions,data
 
+# num_sets: number of sets in which the dataset will be splitted to run the cross validation
+# degree_list: list of degree to be tried
+# lambdas: list of lambdas to be tried 
+def ridge_regression_tuning(x, y, degree_list, lambdas):    
+    
+    ratios = [] # matrix success ratio obtained with the training sets
+
+    # define lists to store the loss of training data and test data
+    for nfigure, degree in enumerate(degree_list): # one figure per degree
+        tx = build_poly(x, degree) 
+        
+        # one row (figure) per degree
+        ratios.append([])
+        
+        for npoint, lambda_ in enumerate(lambdas):
+            # for each lambda we compute the expected ratio of success (this will be the a point in the figure)
+            ratios[nfigure].append(0)
+            
+            # train the model, just line should change depending on the chosen training 
+            _, w = ridge_regression(y, tx, lambda_)
+
+            ratios[nfigure][npoint] = compute_loss(y, tx, w, costfunc=CostFunction.SUCCESS_RATIO)
+            
+    ratios = np.array(ratios)
+    
+    return ratios
+
+
+# num_sets: number of sets in which the dataset will be splitted to run the cross validation
+# degree_list: list of degree to be tried
+# lambdas: list of lambdas to be tried 
+def cross_validation_ridge_regression(x, y, num_K_sets, degree_list, lambdas):
+    seed = 2
+    
+    # split indices in k sets
+    k_indices = build_k_indices(y, num_K_sets, seed)
+    
+    ratio_tr = [] # matrix success ratio obtained with the training sets
+    ratio_te = [] # matrix success ratio obtained with the test sets
+
+    # define lists to store the loss of training data and test data
+    for nfigure, degree in enumerate(degree_list): # one figure per degree
+        tx = build_poly(x, degree) 
+        
+        # one row (figure) per degree
+        ratio_tr.append([])
+        ratio_te.append([])
+        
+        for npoint, lambda_ in enumerate(lambdas):
+            # for each lambda we compute the expected ratio of success (this will be the a point in the figure)
+            ratio_tr[nfigure].append(0)
+            ratio_te[nfigure].append(0)
+            
+            for k_curr in range(num_K_sets):
+                train, test = get_kth_set(y, tx, k_indices, k_curr)
+                
+                # train the model, just line should change depending on the chosen training 
+                _, w = ridge_regression(train.y, train.tx, lambda_)
+                
+#                 # gradient descent
+#                 initial_w = np.zeros(tx.shape[1])
+#                 max_iters = 50
+#                 gamma = lambda_
+#                 _, w = gradient_descent(train.y, train.tx, initial_w, max_iters, gamma, batch_size=-1, print_output=False, plot_losses=False, costfunc=CostFunction.MSE)
+                
+                # compute how good is the model
+                ratio_tr[nfigure][npoint] += compute_loss(train.y, train.tx, w, costfunc=CostFunction.SUCCESS_RATIO)
+                ratio_te[nfigure][npoint] += compute_loss(test.y, test.tx, w, costfunc=CostFunction.SUCCESS_RATIO)
+            
+            # average the ratio obtained with the cross validation
+            ratio_tr[nfigure][npoint] /= num_K_sets
+            ratio_te[nfigure][npoint] /= num_K_sets
+            
+    ratio_tr = np.array(ratio_tr)
+    ratio_te = np.array(ratio_te)
+    
+#     print(ratio_tr.shape) # #degree x #lambdas
+#     print(ratio_te.shape)
+#     print(degrees.shape)
+#     print(lambdas.shape)
+    
+    return ratio_tr, ratio_te
 
 
 def load_data(sub_sample=True, add_outlier=False):
