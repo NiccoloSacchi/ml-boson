@@ -56,12 +56,30 @@ def sustitute_nans(x, substitutions=[]):
     return x
     
 # drop all the rows containing np.nan
-def drop_nan_rows(x):
-    return x[~np.isnan(x).any(axis=1)]
+def drop_nan_rows(x, y):
+    keep_indices = ~np.isnan(x).any(axis=1)
+    return x[keep_indices], y[keep_indices]
 
 # drop all the rows containing np.nan
 def drop_nan_columns(x):
     return x[:, ~np.isnan(x).any(axis=0)]
+
+def drop_corr_columns(x):
+    headers = np.array(["Id","Prediction","DER_mass_MMC","DER_mass_transverse_met_lep","DER_mass_vis","DER_pt_h","DER_deltaeta_jet_jet","DER_mass_jet_jet","DER_prodeta_jet_jet","DER_deltar_tau_lep","DER_pt_tot","DER_sum_pt","DER_pt_ratio_lep_tau","DER_met_phi_centrality","DER_lep_eta_centrality","PRI_tau_pt","PRI_tau_eta","PRI_tau_phi","PRI_lep_pt","PRI_lep_eta","PRI_lep_phi","PRI_met","PRI_met_phi","PRI_met_sumet","PRI_jet_num","PRI_jet_leading_pt","PRI_jet_leading_eta","PRI_jet_leading_phi","PRI_jet_subleading_pt","PRI_jet_subleading_eta","PRI_jet_subleading_phi","PRI_jet_all_pt"])
+
+    drop = [
+        "DER_deltaeta_jet_jet",
+        "DER_mass_jet_jet", 
+        "DER_prodeta_jet_jet",
+        "DER_deltar_tau_lep",
+        "DER_sum_pt",
+        "PRI_met_sumet",
+        "PRI_jet_leading_pt",
+        "PRI_jet_leading_eta",
+        "PRI_jet_all_pt"]
+
+    drop_id = np.where(np.in1d(headers, drop))[0]-2
+    return np.delete(x, drop_id, axis=1)
 
 # STANDARDIZE X
 def standardize(x):
