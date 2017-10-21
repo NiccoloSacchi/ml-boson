@@ -22,7 +22,7 @@ def load_csv_data(data_path, sub_sample=False):
 
     return yb, input_data, ids
 
-def load_csv_data(data_path, sample_number, ):
+def load_partial_csv_data(data_path, sample_number):
     """Loads data and returns y (class labels), tX (features) and ids (event ids)"""
     y = np.genfromtxt(data_path, delimiter=",", skip_header=1, dtype=str, usecols=1,max_rows = sample_number)
     x = np.genfromtxt(data_path, delimiter=",", skip_header=1,max_rows = sample_number)
