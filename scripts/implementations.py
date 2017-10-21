@@ -11,16 +11,15 @@ from types import SimpleNamespace
 # 2. fill_nan (possibly without passing a subs_func)
 # 3. drop_nan_rows/column (only if you didn't passed a subs_func)
 # 4. standardize
-# 5. build_poly
-# 6. train model
+# 5. for a chosen model and a set of hyperparameters: build_poly, train model, test model
 
 # -nan_values: a map from column indices to the respective nan value
-# e.g. nan_values = {5: -999, 20: 0, ...} (only for column which contain 
+# e.g. nan_values = {5: -999, 20: 0, ...} (only for column which contain
 # an invalid value)
 # -subs_func: a function, e.g. np.nanmean, np.nanmedian, np.nanstd, that will
 # be applied column-wise and whose result will be placed in the nan values
 # of that column. If this function is not passed than it will keep np.nan values.
-def fill_nan(x, nan_values={}, subs_func=None):
+def fill_with_nan_map(x, nan_values={}, subs_func=None):
     """ Deals with the nan values: identify and substitute them.
     Run this function before the 'standardize' one. """
     x = x.astype(float) 
@@ -32,6 +31,29 @@ def fill_nan(x, nan_values={}, subs_func=None):
         if subs_func != None:
             col[np.isnan(col)] = subs_func(col)
     return x  
+
+# -nan_values: a list of invalid values. the whole list is for all of the columns.
+# returns x where all the entries that where in the list nan_values are now np.nan
+def fill_with_nan_list(x, nan_values=[]):
+    """ Deals with the nan values: identify and substitute them.
+    Run this function before the 'standardize' one. """
+    x = x.astype(float) 
+    nrows, ncols = x.shape
+    
+    for col_id in range(ncols): # scan columns
+        for row_id in range(nrows): # put nan in this column where needed
+            if x[row_id][col_id] in nan_values:
+                x[row_id][col_id] = np.nan
+    return x 
+
+# substitutions: array of substitutions. len(substitutions) = #columns in x
+# the nan values of column i are substituted with substitutions[i]
+def sustitute_nans(x, substitutions=[]):
+    nrows, ncols = x.shape
+    mask = np.isnan(x)
+    for col_id in range(ncols): # scan columns
+        x[:, col_id][mask[:, col_id]] = substitutions[col_id]
+    return x
     
 # drop all the rows containing np.nan
 def drop_nan_rows(x):
@@ -211,7 +233,7 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, print_output=True, plot
 
 
 """ Gradient descent and Stochastic gradient descent """
-def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_output=True, plot_losses=True, costfunc=CostFunction.MSE):
+def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_output_with_weights=[], plot_losses=True, costfunc=CostFunction.MSE):
     """ w(t+1) = w(t)-gamma*gradient(L(w)) where L(w) can be computed on a subset of variables depending on batch_size.
     If a different batch_size is not passed then L(w) is computed using all the points.
     Can not be used with the non-differentiable MAE.  """
@@ -220,6 +242,8 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_ou
     # 1. implement a decreasing gamma
     
     # if costfunc = PROB the y should be made only of 1s and 0s (just for the training phase).
+    if costfunc == CostFunction.PROB:
+        y[y==-1] = 0
     
     # if the batch_size has not been set then do gradient_descent
     if batch_size < 0: 
@@ -255,9 +279,9 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, batch_size=-1, print_ou
                 loss_min = curr_loss
                 w_best = w
             
-            if print_output:
-                print("Gradient Descent({bi}/{ti}): loss={l}, nth_w={w}".format(
-                      bi=n_iter, ti=max_iters - 1, l=curr_loss, nth_w=w[0]))
+            if len(print_output_with_weights) > 0:
+                print("Gradient Descent({bi}/{ti}): loss={l}, weights={weights}".format(
+                      bi=n_iter, ti=max_iters - 1, l=curr_loss, weights=[w[i] for i in print_output_with_weights]))
 
             if plot_losses:
                 plt.scatter(n_iter, curr_loss, color='red') # check the losses are strictly decreasing
