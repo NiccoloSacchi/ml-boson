@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from proj1_helpers import predict_labels
 from types import SimpleNamespace 
+import codecs, json 
 
 # workflow:
 # 1. load data
@@ -12,6 +13,8 @@ from types import SimpleNamespace
 # 3. drop_nan_rows/column (only if you didn't passed a subs_func)
 # 4. standardize
 # 5. for a chosen model and a set of hyperparameters: build_poly, train model, test model
+
+# DATA CLEANING FUNCTIONS 
 
 # -nan_values: a map from column indices to the respective nan value
 # e.g. nan_values = {5: -999, 20: 0, ...} (only for column which contain
@@ -64,22 +67,65 @@ def drop_nan_rows(x, y):
 def drop_nan_columns(x):
     return x[:, ~np.isnan(x).any(axis=0)]
 
-def drop_corr_columns(x):
-    headers = np.array(["Id","Prediction","DER_mass_MMC","DER_mass_transverse_met_lep","DER_mass_vis","DER_pt_h","DER_deltaeta_jet_jet","DER_mass_jet_jet","DER_prodeta_jet_jet","DER_deltar_tau_lep","DER_pt_tot","DER_sum_pt","DER_pt_ratio_lep_tau","DER_met_phi_centrality","DER_lep_eta_centrality","PRI_tau_pt","PRI_tau_eta","PRI_tau_phi","PRI_lep_pt","PRI_lep_eta","PRI_lep_phi","PRI_met","PRI_met_phi","PRI_met_sumet","PRI_jet_num","PRI_jet_leading_pt","PRI_jet_leading_eta","PRI_jet_leading_phi","PRI_jet_subleading_pt","PRI_jet_subleading_eta","PRI_jet_subleading_phi","PRI_jet_all_pt"])
 
-    drop = [
-        "DER_deltaeta_jet_jet",
-        "DER_mass_jet_jet", 
-        "DER_prodeta_jet_jet",
-        "DER_deltar_tau_lep",
-        "DER_sum_pt",
-        "PRI_met_sumet",
-        "PRI_jet_leading_pt",
-        "PRI_jet_leading_eta",
-        "PRI_jet_all_pt"]
+def drop_corr_columns(x, min_corr):
+    """ Drop the columns which have a correlation higher (in absolute value) than the passed one. 
+    Returns both the new dataset and the list of indices of the dropped columns. """
+    
+    # load the correlation matrix that was computed on the whole dataset
+    file_path = "corr_matrix.json"
+    obj_text = codecs.open(file_path, 'r', encoding='utf-8').read()
+    b_new = json.loads(obj_text)
+    corr_matrix_loaded = np.array(b_new)
+    
+    corr_matrix_bool = np.abs(corr_matrix_loaded) > min_corr  
+    
+    # i is surely correlated to itself, drop that information
+    for i in range(30):
+        corr_matrix_bool[i][i] = False
 
-    drop_id = np.where(np.in1d(headers, drop))[0]-2
-    return np.delete(x, drop_id, axis=1)
+    # compute the mapping of correlations
+    corr = {} 
+    for i in range(30):
+        c = np.where(corr_matrix_bool[i])[0].tolist()
+        if len(c) > 0: # if it is not correlated to any other column then ignore it
+            corr[i] = c
+    
+    # print(correlated_to)
+    tobe_deleted = []
+    # fetch all the columns that can be deleted and put them in tobe_deleted
+    for _ in range(len(corr)): 
+        longer_key = -1 
+        longer_length = 0
+
+        # look for the longer list
+        for key in corr:
+            curr_length = len(corr[key])
+            if curr_length > longer_length:
+                longer_length = curr_length
+                longer_key = key
+
+        if longer_length == 0: 
+            break
+
+        # print(longer_key, "\t", corr[longer_key])
+
+        tobe_deleted.append(corr[longer_key])
+        # delete all the columns that are correlated to column longer_key
+        # i.e. all the column whose index is in  corr[longer_key]
+        for corr_colum in corr[longer_key]:
+            corr[corr_colum] = []
+
+        # since those columns have been dropped they must be removed from all the other lists
+        for key in corr: 
+            if key != longer_key:
+                #print(key, corr[key], "-", corr[longer_key], "=", list(set(corr[key]) - set(corr[longer_key])))
+                corr[key] = list(set(corr[key]) - set(corr[longer_key]))
+        corr[longer_key] = []
+
+    tobe_deleted = [val for sublist in tobe_deleted for val in sublist] # flatten the list
+
+    return np.delete(x, tobe_deleted, axis=1), len(tobe_deleted)
 
 # STANDARDIZE X
 def standardize(x):
