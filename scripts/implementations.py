@@ -67,6 +67,36 @@ def drop_nan_rows(x, y):
 def drop_nan_columns(x):
     return x[:, ~np.isnan(x).any(axis=0)]
 
+def drop_same_distribution_columns(x):
+    #columns : N,R,U,W,AB,AE -> 11,15,18,20,25,28
+    tobe_deleted = [11,15,18,20,25,28]
+    return np.delete(x, tobe_deleted, axis=1)
+
+def corr_columns_indices(x):
+    return list([4,5,6,12,26,27,28])
+
+def nan_ratio_columns_indices(x,ratio):
+    return np.where(np.sum(x==-999, axis=0)/x.shape[0] < 0.7)[0]
+
+def same_distribution_columns_indices(x):
+    return [11,15,18,20,25,28]
+
+
+def compute_deletion_list(x):
+    return np.array([4,5,6,11,12,15,18,20,25,26,27,28])               
+
+
+
+def clean_data(x,data_u):
+    deletion_list = compute_deletion_list(x)
+    print(deletion_list.shape)
+    return np.delete(x,deletion_list,axis=1),np.delete(data_u,deletion_list,axis=1)
+
+def drop_columns_with_70_nan_ratio(x):
+    """ drops the columns with more than 70% of entries with -999 """
+    tot = x.shape[0]
+    indices = np.where(np.sum(x==-999, axis=0)/tot < 0.7)[0]
+    return x[:, indices]
 
 def drop_corr_columns(x, min_corr):
     """ Drop the columns which have a correlation higher (in absolute value) than the passed one. 
