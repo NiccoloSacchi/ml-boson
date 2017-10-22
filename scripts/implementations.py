@@ -7,6 +7,29 @@ from proj1_helpers import predict_labels
 from types import SimpleNamespace 
 import codecs, json 
 
+def clean_x(x_, corr, subs_func=np.nanmean):
+    """ 
+    1. Drops the 7 invalid columns.
+    2. Drops the columns with |correlation| > 'corr'.
+    3. Substitutes the remaining -999 with the values created by 'subs_func' (one value per column). 
+    4. Standardises. 
+    """
+    ncol = x_.shape[1]
+    
+    # drop "invalid" and correlated columns
+    x_ = drop_corr_columns(x_,corr)#, "corr_matrix23.json")
+    print(ncol-x_.shape[1], "columns have been dropped")
+    # fill -999 and 0 with the np.nan
+    x_ = fill_with_nan_list(x_, nan_values=[0, -999])
+
+    # standardize
+    x_, mean_x, std_x = standardize(x_)
+    
+    # substitute the nan values with something
+    x_ = sustitute_nans(x_, substitutions=subs_func(x_, axis=0)) 
+
+    return x_
+
 # workflow:
 # 1. load data
 # 2. fill_nan (possibly without passing a subs_func)
@@ -84,7 +107,6 @@ def same_distribution_columns_indices(x):
 
 def compute_deletion_list(x):
     return np.array([4,5,6,11,12,15,18,20,25,26,27,28])               
-
 
 
 def clean_data(x,data_u):
@@ -526,7 +548,7 @@ def cross_validation_visualization(ratio_tr, ratio_te, degree_list, x_axis, x_la
 
     for row in range(n_rows):
         for col in range(n_cols):
-            cur_figure = row*col + col
+            cur_figure = row*n_cols + col
             if cur_figure < nfigures:
                 if n_rows > 1:
                     curr_ax = ax[row][col]
@@ -601,7 +623,7 @@ def ratios_visualization(ratios, degree_list, x_axis, x_label="x label", log_axi
                 
                 curr_ax.grid()
                 curr_ax.legend(["model "+str(model) for model in range(nmodels)])
-                curr_ax.set_ylim([0.5, 1])
+                curr_ax.set_ylim([0, 1])
                 curr_ax.set_title("Degree: " + str(degree_list[cur_figure]))
                 curr_ax.set_ylabel("Ratio of correct predictions")
                 curr_ax.set_xlabel(x_label)
