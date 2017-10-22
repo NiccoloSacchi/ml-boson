@@ -68,12 +68,26 @@ def drop_nan_columns(x):
     return x[:, ~np.isnan(x).any(axis=0)]
 
 
+def drop_columns_with_70_nan_ratio(x):
+    """ drops the columns with more than 70% of entries with -999.
+    Returns the obtained dataset and the number ofr columns dropped. """
+    tot = x.shape[0]
+    indices = np.where(np.sum(x==-999, axis=0)/tot < 0.7)[0]
+    return indices
+
 def drop_corr_columns(x, min_corr):
-    """ Drop the columns which have a correlation higher (in absolute value) than the passed one. 
+    """ 1. drop the columns with lot of nan values (hardocded).
+    2. Drop the columns which have a correlation higher (in absolute value) than the passed one. 
     Returns both the new dataset and the list of indices of the dropped columns. """
     
+    # hardcoded indices of the columns with less than 70% of nan values
+    toKeep = [0,  1,  2,  3,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 29]
+    toDrop = set(range(x.shape[1])) - set(toKeep)
+    x = x[:, toKeep]
+    
+    ncols = x.shape[1]
     # load the correlation matrix that was computed on the whole dataset
-    file_path = "corr_matrix.json"
+    file_path = "corr_matrix23.json"
     obj_text = codecs.open(file_path, 'r', encoding='utf-8').read()
     b_new = json.loads(obj_text)
     corr_matrix_loaded = np.array(b_new)
@@ -81,12 +95,12 @@ def drop_corr_columns(x, min_corr):
     corr_matrix_bool = np.abs(corr_matrix_loaded) > min_corr  
     
     # i is surely correlated to itself, drop that information
-    for i in range(30):
+    for i in range(ncols):
         corr_matrix_bool[i][i] = False
 
     # compute the mapping of correlations
     corr = {} 
-    for i in range(30):
+    for i in range(ncols):
         c = np.where(corr_matrix_bool[i])[0].tolist()
         if len(c) > 0: # if it is not correlated to any other column then ignore it
             corr[i] = c
@@ -125,7 +139,7 @@ def drop_corr_columns(x, min_corr):
 
     tobe_deleted = [val for sublist in tobe_deleted for val in sublist] # flatten the list
 
-    return np.delete(x, tobe_deleted, axis=1), len(tobe_deleted)
+    return np.delete(x, tobe_deleted, axis=1) #, np.append(tobe_deleted, toDrop)
 
 # STANDARDIZE X
 def standardize(x):
@@ -545,7 +559,7 @@ def ratios_visualization(ratios, degree_list, x_axis, x_label="x label", log_axi
 
     for row in range(n_rows):
         for col in range(n_cols):
-            cur_figure = row*col + col
+            cur_figure = row*n_cols + col
             if cur_figure < nfigures:
                 if n_rows > 1:
                     curr_ax = ax[row][col]
@@ -557,12 +571,14 @@ def ratios_visualization(ratios, degree_list, x_axis, x_label="x label", log_axi
                 
                 curr_ax.grid()
                 curr_ax.legend(["model "+str(model) for model in range(nmodels)])
-                curr_ax.set_ylim([0, 1])
+                curr_ax.set_ylim([0.5, 1])
                 curr_ax.set_title("Degree: " + str(degree_list[cur_figure]))
                 curr_ax.set_ylabel("Ratio of correct predictions")
                 curr_ax.set_xlabel(x_label)
                 #for tick in ax[row][col].get_xticklabels():
                 #    tick.set_rotation(45)
+                
+
 
     plt.tight_layout()
     if save_figure_with_name != "":
