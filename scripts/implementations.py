@@ -7,29 +7,6 @@ from proj1_helpers import predict_labels
 from types import SimpleNamespace 
 import codecs, json 
 
-def clean_x(x_, corr, subs_func=np.nanmean):
-    """ 
-    1. Drops the 7 invalid columns.
-    2. Drops the columns with |correlation| > 'corr'.
-    3. Substitutes the remaining -999 with the values created by 'subs_func' (one value per column). 
-    4. Standardises. 
-    """
-    ncol = x_.shape[1]
-    
-    # drop "invalid" and correlated columns
-    x_ = drop_corr_columns(x_,corr)#, "corr_matrix23.json")
-    print(ncol-x_.shape[1], "columns have been dropped")
-    # fill -999 and 0 with the np.nan
-    x_ = fill_with_nan_list(x_, nan_values=[0, -999])
-
-    # standardize
-    x_, mean_x, std_x = standardize(x_)
-    
-    # substitute the nan values with something
-    x_ = sustitute_nans(x_, substitutions=subs_func(x_, axis=0)) 
-
-    return x_
-
 # workflow:
 # 1. load data
 # 2. fill_nan (possibly without passing a subs_func)
@@ -37,6 +14,97 @@ def clean_x(x_, corr, subs_func=np.nanmean):
 # 4. standardize
 # 5. for a chosen model and a set of hyperparameters: build_poly, train model, test model
 
+def column_labels():
+    """ Return the column names. Use column_labels().index("DER_sum_pt") to retrieve the corresponding index """
+    return np.array([
+        "DER_mass_MMC",
+        "DER_mass_transverse_met_lep", 
+        "DER_mass_vis","DER_pt_h", 
+        "DER_deltaeta_jet_jet", 
+        "DER_mass_jet_jet", 
+        "DER_prodeta_jet_jet", 
+        "DER_deltar_tau_lep", 
+        "DER_pt_tot",
+        "DER_sum_pt", 
+        "DER_pt_ratio_lep_tau", 
+        "DER_met_phi_centrality", 
+        "DER_lep_eta_centrality", 
+        "PRI_tau_pt",
+        "PRI_tau_eta", 
+        "PRI_tau_phi",
+        "PRI_lep_pt", 
+        "PRI_lep_eta",
+        "PRI_lep_phi", 
+        "PRI_met", 
+        "PRI_met_phi",
+        "PRI_met_sumet", 
+        "PRI_jet_num", 
+        "PRI_jet_leading_pt", 
+        "PRI_jet_leading_eta", 
+        "PRI_jet_leading_phi",
+        "PRI_jet_subleading_pt", 
+        "PRI_jet_subleading_eta",
+        "PRI_jet_subleading_phi", 
+        "PRI_jet_all_pt"])
+
+
+# DATA ANALYSIS FUNCTIONS
+def plot_distributions(x, y, col_labels = column_labels(), title="distributions"):
+    
+    if (x.shape[1] != len(col_labels)):
+        print("You should pass the correct column labels")
+        col_labels = range(x.shape[1])
+    
+    n_cols = 2
+    n_rows = len(col_labels)
+    fig, ax = plt.subplots(n_rows, n_cols)
+    
+    width =  n_cols*5
+    heigth = n_rows*4
+    fig.set_size_inches(width, heigth)
+    
+    # get indices relative to y = 1
+    indices1 = np.where(y == 1)[0]
+    # get indices relative to y = -1
+    indices0 = np.where(y == -1)[0]
+        
+    for feature in range(x.shape[1]):
+        ax_row = ax[feature] 
+               
+        # plot the feature relative to y = 1
+        feature1 = x[indices1, feature]
+#         feature1 = feature1[feature1 != -999]
+#         feature1 = feature1[feature1 != 0]
+        # plot histogram
+        n, bins, patches = \
+            ax_row[0].hist(feature1, histtype='step', bins=int(len(feature1)/1000), color="blue")#, normed=True)
+        # plot distribution
+        y = plt.mlab.normpdf(bins, np.mean(feature1), np.std(feature1))  
+        ax_row[1].plot(bins, y, 'b--', linewidth=1)
+        
+        feature0 = x[indices0, feature]
+#         feature0 = feature0[feature0 != -999]
+#         feature0 = feature0[feature0 != 0]
+        # plot histogram
+        n, bins, patches = \
+            ax_row[0].hist(feature0, histtype='step', bins=int(len(feature0)/1000), color="red")#, normed=True)
+        # plot distribution
+        y = plt.mlab.normpdf(bins, np.mean(feature0), np.std(feature0))
+        ax_row[1].plot(bins, y, 'r--', linewidth=1)
+        
+        ylabels = ["frequency", "distribution"]
+        for i in range(n_cols):
+            ax_row[i].grid()
+            ax_row[i].legend(["y = 1", "y = -1"])
+            ax_row[i].set_title(col_labels[feature])
+            ax_row[i].set_ylabel(ylabels[i])
+            ax_row[i].set_xlabel("feature values")
+
+    plt.tight_layout()
+    plt.savefig(title)
+    plt.show()
+    
+    
 # DATA CLEANING FUNCTIONS 
 
 # -nan_values: a map from column indices to the respective nan value
@@ -114,15 +182,37 @@ def clean_data(x,data_u):
     print(deletion_list.shape)
     return np.delete(x,deletion_list,axis=1),np.delete(data_u,deletion_list,axis=1)
 
-def drop_columns_with_70_nan_ratio(x):
-    """ drops the columns with more than 70% of entries with -999 """
-    tot = x.shape[0]
-    indices = np.where(np.sum(x==-999, axis=0)/tot < 0.7)[0]
-    return x[:, indices]
+def clean_x(x_, corr, subs_func=np.nanmean):
+    """ 
+    1. Drops the 7 invalid columns.
+    2. Drops the columns with |correlation| > 'corr'.
+    3. Substitutes the remaining -999 with the values created by 'subs_func' (one value per column). 
+    4. Standardises. 
+    """
+    ncol = x_.shape[1]
+    
+    # drop "invalid" and correlated columns
+    x_, droppedCols = drop_corr_columns(x_,corr)
+    print(ncol - x_.shape[1], "columns have been dropped")
+    # fill -999 and 0 with the np.nan
+    x_ = fill_with_nan_list(x_, nan_values=[0, -999])
+
+    # standardize
+    x_, mean_x, std_x = standardize(x_)
+    
+    # substitute the nan values with something
+    x_ = sustitute_nans(x_, substitutions=subs_func(x_, axis=0)) 
+
+    return x_, droppedCols
+
 
 def drop_columns_with_70_nan_ratio(x):
-    """ drops the columns with more than 70% of entries with -999.
-    Returns the obtained dataset and the number ofr columns dropped. """
+    """ drops the columns with more than 70% of entries with -999 """
+    return x[:, columns_with_70_nan_ratio(x)]
+
+def columns_with_70_nan_ratio(x):
+    """ Some columns have more than 70% of entries with -999.
+    This function returns the columns that can be kept """
     tot = x.shape[0]
     indices = np.where(np.sum(x==-999, axis=0)/tot < 0.7)[0]
     return indices
@@ -130,23 +220,31 @@ def drop_columns_with_70_nan_ratio(x):
 def drop_corr_columns(x, min_corr):
     """ 1. drop the columns with lot of nan values (hardocded).
     2. Drop the columns which have a correlation higher (in absolute value) than the passed one. 
-    Returns both the new dataset and the list of indices of the dropped columns. """
+    Returns both the new dataset and the list labels of the kept columns. """
     
-    # hardcoded indices of the columns with less than 70% of nan values
-    toKeep = [0,  1,  2,  3,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 29]
-    toDrop = set(range(x.shape[1])) - set(toKeep)
-    x = x[:, toKeep]
-    
-    ncols = x.shape[1]
     # load the correlation matrix that was computed on the whole dataset
-    file_path = "corr_matrix23.json"
+    file_path = "corr_matrix.json"
     obj_text = codecs.open(file_path, 'r', encoding='utf-8').read()
     b_new = json.loads(obj_text)
     corr_matrix_loaded = np.array(b_new)
     
+    kept_columns = column_labels()
+    # hardcoded indices of the columns with less than 70% of nan values
+    toKeep = [0,  1,  2,  3,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 29]
+    
+    # hardcoded indices of the columns with less than 70% of nan values and no *_phi column
+    #toKeep = [0,  1,  2,  3,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 29]
+    
+    # update x, the labels of the columns and the correlation matrix
+    x = x[:, toKeep]
+    kept_columns = kept_columns[toKeep]
+    corr_matrix_loaded = corr_matrix_loaded[toKeep, :][:, toKeep] 
+
+    ncols = x.shape[1]
+    
     corr_matrix_bool = np.abs(corr_matrix_loaded) > min_corr  
     
-    # i is surely correlated to itself, drop that information
+    # i is surely correlated to itself, drop that (useless) information
     for i in range(ncols):
         corr_matrix_bool[i][i] = False
 
@@ -191,7 +289,7 @@ def drop_corr_columns(x, min_corr):
 
     tobe_deleted = [val for sublist in tobe_deleted for val in sublist] # flatten the list
 
-    return np.delete(x, tobe_deleted, axis=1) #, np.append(tobe_deleted, toDrop)
+    return np.delete(x, tobe_deleted, axis=1), np.delete(kept_columns, tobe_deleted)
 
 # STANDARDIZE X
 def standardize(x):
