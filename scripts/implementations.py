@@ -362,6 +362,7 @@ def compute_loss(y, tx, w, costfunc=CostFunction.MSE):
         # However we have 30 dimension, therefore the grid search has a high complexity:
         # O(N^30) where N is the amount of trials per dimension.
         pred = predict_labels(w, tx)
+        y[y==0] = -1
         num_correct = np.sum(pred==y)
         return num_correct/len(y)
     
