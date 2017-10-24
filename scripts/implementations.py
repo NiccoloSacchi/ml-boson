@@ -77,7 +77,7 @@ def plot_distributions(x, y, col_labels = column_labels(), title="distributions"
 #         feature1 = feature1[feature1 != 0]
         # plot histogram
         n, bins, patches = \
-            ax_row[0].hist(feature1, histtype='step', bins=int(len(feature1)/1000), color="blue")#, normed=True)
+            ax_row[0].hist(feature1, histtype='step', bins=int(len(feature1)/1000), color="blue", normed=True)
         # plot distribution
         y = plt.mlab.normpdf(bins, np.mean(feature1), np.std(feature1))  
         ax_row[1].plot(bins, y, 'b--', linewidth=1)
@@ -87,12 +87,12 @@ def plot_distributions(x, y, col_labels = column_labels(), title="distributions"
 #         feature0 = feature0[feature0 != 0]
         # plot histogram
         n, bins, patches = \
-            ax_row[0].hist(feature0, histtype='step', bins=int(len(feature0)/1000), color="red")#, normed=True)
+            ax_row[0].hist(feature0, histtype='step', bins=int(len(feature0)/1000), color="red", normed=True)
         # plot distribution
         y = plt.mlab.normpdf(bins, np.mean(feature0), np.std(feature0))
         ax_row[1].plot(bins, y, 'r--', linewidth=1)
         
-        ylabels = ["frequency", "distribution"]
+        ylabels = ["normed frequency", "distribution"]
         for i in range(n_cols):
             ax_row[i].grid()
             ax_row[i].legend(["y = 1", "y = -1"])
@@ -182,28 +182,74 @@ def clean_data(x,data_u):
     print(deletion_list.shape)
     return np.delete(x,deletion_list,axis=1),np.delete(data_u,deletion_list,axis=1)
 
-def clean_x(x_, corr, subs_func=np.nanmean):
+def clean_x(x_, corr, subs_func=None, bool_col=False):
     """ 
+    bool_col = {True, False} if true creates a boolean column 
+    subs_func = {None, np.nanmean, np.nanmedian, np.nanstd}
+    
     1. Drops the 7 invalid columns.
     2. Drops the columns with |correlation| > 'corr'.
-    3. Substitutes the remaining -999 with the values created by 'subs_func' (one value per column). 
+    3. Treats the -999 depending on subs_func. 
     4. Standardises. 
     """
     ncol = x_.shape[1]
     
     # drop "invalid" and correlated columns
-    x_, droppedCols = drop_corr_columns(x_,corr)
-    print(ncol - x_.shape[1], "columns have been dropped")
-    # fill -999 and 0 with the np.nan
-    x_ = fill_with_nan_list(x_, nan_values=[0, -999])
-
-    # standardize
-    x_, mean_x, std_x = standardize(x_)
+    x_, keptColumns = drop_corr_columns(x_,corr)
     
-    # substitute the nan values with something
-    x_ = sustitute_nans(x_, substitutions=subs_func(x_, axis=0)) 
+    # drop also the columns with same distribution 
+    to_be_removed = np.where(np.isin(keptColumns, ["PRI_tau_phi", "PRI_lep_phi", "PRI_met_phi"])) # PRI_jet_num
 
-    return x_, droppedCols
+    keptColumns = np.delete(keptColumns, to_be_removed)
+    x_ = np.delete(x_, to_be_removed, axis=1)
+    print(ncol - x_.shape[1], "columns have been dropped")
+    
+    if bool_col == True:
+        count = 0
+        """
+        x_ = np.concatenate((x_, [[0]]*x_.shape[0]), axis=1)
+        x_[:, -1] = np.sum(x_==-999, axis = 1)
+        count += 1"""
+        
+        """
+        if "PRI_jet_all_pt" in keptColumns:
+            count += 1
+            x_ = np.concatenate((x_, [[0]]*x_.shape[0]), axis=1)
+            # set column to 1 (true) if PRI_jet_all_pt == 0 
+            x_[:, -1] = x_[:, -2] == 0"""
+        
+        # creates a bool column, whose value is 1 if any of the other values in the row is 999, 0 otherwise
+        for col in range(x_.shape[1]):
+            x_col = x_[:, col]
+            
+            nan_vals = x_col == -999
+            
+            if np.any(nan_vals): # if there are -999 in this column, then add a boolean column to store this info 
+                count += 1
+                # add the column 
+                x_ = np.concatenate((x_, [[0]]*x_.shape[0]), axis=1)
+
+                # set column to 1 (true) if the row contains at least a -999
+                x_[:, -1] = nan_vals
+
+                keptColumns = np.append(keptColumns, "bool_"+keptColumns[col])
+                
+        print("Added", count , "bool columns")
+        
+    if subs_func != None:
+        # fill -999 and 0 with the np.nan
+        x_ = fill_with_nan_list(x_, nan_values=[-999])
+
+        # standardize
+        x_, mean_x, std_x = standardize(x_)
+
+        # substitute the nan values with something
+        x_ = sustitute_nans(x_, substitutions=subs_func(x_, axis=0)) 
+    else:
+        # standardize
+        x_, mean_x, std_x = standardize(x_)
+
+    return x_, keptColumns
 
 
 def drop_columns_with_70_nan_ratio(x):
@@ -217,7 +263,7 @@ def columns_with_70_nan_ratio(x):
     indices = np.where(np.sum(x==-999, axis=0)/tot < 0.7)[0]
     return indices
 
-def drop_corr_columns(x, min_corr):
+def drop_corr_columns(x, min_corr, important=True):
     """ 1. drop the columns with lot of nan values (hardocded).
     2. Drop the columns which have a correlation higher (in absolute value) than the passed one. 
     Returns both the new dataset and the list labels of the kept columns. """
@@ -230,10 +276,7 @@ def drop_corr_columns(x, min_corr):
     
     kept_columns = column_labels()
     # hardcoded indices of the columns with less than 70% of nan values
-    toKeep = [0,  1,  2,  3,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 29]
-    
-    # hardcoded indices of the columns with less than 70% of nan values and no *_phi column
-    #toKeep = [0,  1,  2,  3,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 29]
+    toKeep = [0,  1,  2,  3,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 29]    
     
     # update x, the labels of the columns and the correlation matrix
     x = x[:, toKeep]
@@ -241,12 +284,12 @@ def drop_corr_columns(x, min_corr):
     corr_matrix_loaded = corr_matrix_loaded[toKeep, :][:, toKeep] 
 
     ncols = x.shape[1]
-    
     corr_matrix_bool = np.abs(corr_matrix_loaded) > min_corr  
     
     # i is surely correlated to itself, drop that (useless) information
     for i in range(ncols):
         corr_matrix_bool[i][i] = False
+
 
     # compute the mapping of correlations
     corr = {} 
@@ -254,9 +297,16 @@ def drop_corr_columns(x, min_corr):
         c = np.where(corr_matrix_bool[i])[0].tolist()
         if len(c) > 0: # if it is not correlated to any other column then ignore it
             corr[i] = c
-    
+            
     # print(correlated_to)
+    # keep the jet all column
     tobe_deleted = []
+    if (important) & ("PRI_jet_all_pt" in kept_columns): # it is the last column 
+        imp_col = len(kept_columns)-1
+        for key in corr: 
+            corr[key] = list(set(corr[key]) - set([imp_col]))
+        corr[imp_col] = []
+        
     # fetch all the columns that can be deleted and put them in tobe_deleted
     for _ in range(len(corr)): 
         longer_key = -1 
@@ -279,7 +329,7 @@ def drop_corr_columns(x, min_corr):
         # i.e. all the column whose index is in  corr[longer_key]
         for corr_colum in corr[longer_key]:
             corr[corr_colum] = []
-
+            
         # since those columns have been dropped they must be removed from all the other lists
         for key in corr: 
             if key != longer_key:
@@ -572,6 +622,13 @@ def ridge_regression(y, tx, lambda_):
 
 # TOOLS TEST THE MODEL    
     
+def build_k_indices_(y, num_sets):
+    """ Build k groups of indices for k-fold."""
+    indices = np.array(range(y.shape[0])) # number of data points
+    set_size = int(y.shape[0] / num_sets) # size of the sets
+    k_indices = [indices[k * set_size: (k + 1) * set_size] for k in range(num_sets)]
+    return np.array(k_indices)
+
 def build_k_indices(y, num_sets, seed):
     """ Build k groups of indices for k-fold."""
     N = y.shape[0] # number of data points
