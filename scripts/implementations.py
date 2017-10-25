@@ -47,10 +47,50 @@ def column_labels():
         "PRI_jet_subleading_phi", 
         "PRI_jet_all_pt"])
 
+def column_labels_map():
+    """ Return the column names. Use column_labels().index("DER_sum_pt") to retrieve the corresponding index """
+    return {feature: index for index, feature in enumerate(column_labels())}
+    
 
 # DATA ANALYSIS FUNCTIONS
-def plot_distributions(x, y, col_labels = column_labels(), title="distributions"):
+def plot_features(x, col_labels = column_labels(), title="occurrencies"):
+    """ Plot the features after dropping the -999 values. Can be used to find outliers. """
+        
+    if (x.shape[1] != len(col_labels)):
+        print("You should pass the correct column labels")
+        col_labels = range(x.shape[1])
     
+    n_cols = 3
+    n_rows = int(np.ceil(len(col_labels)/3))
+    fig, ax = plt.subplots(n_rows, n_cols)
+    
+    width =  n_cols*5
+    heigth = n_rows*4
+    fig.set_size_inches(width, heigth)
+    
+    x_axis = range(x.shape[0])
+    
+    for feature in range(x.shape[1]):
+        ax_curr = ax[int(feature/n_cols)][feature%n_cols] 
+        
+        feature_vals = x[:, feature]
+        
+        ind999 = feature_vals==-999
+        ax_curr.scatter(np.where(ind999)[0], feature_vals[ind999]*0, color="blue", s=4)
+        ax_curr.scatter(np.where(~ind999)[0], feature_vals[~ind999], color="red", s=4)        
+        
+        ax_curr.grid()
+        ax_curr.legend(["-999 values", "raw values"])
+        ax_curr.set_title(str(feature) + ': ' + str(col_labels[feature]))
+        ax_curr.set_ylabel("values")
+        ax_curr.set_xlabel("rows")
+
+    plt.tight_layout()
+    plt.savefig(title)
+    plt.show()
+    
+    
+def plot_distributions(x, y, col_labels = column_labels(), title="distributions"):
     if (x.shape[1] != len(col_labels)):
         print("You should pass the correct column labels")
         col_labels = range(x.shape[1])
@@ -77,7 +117,7 @@ def plot_distributions(x, y, col_labels = column_labels(), title="distributions"
 #         feature1 = feature1[feature1 != 0]
         # plot histogram
         n, bins, patches = \
-            ax_row[0].hist(feature1, histtype='step', bins=int(len(feature1)/1000), color="blue", normed=True)
+            ax_row[0].hist(feature1, histtype='step', bins=int(len(feature1)/1000), color="blue", normed=False)
         # plot distribution
         y = plt.mlab.normpdf(bins, np.mean(feature1), np.std(feature1))  
         ax_row[1].plot(bins, y, 'b--', linewidth=1)
@@ -87,7 +127,7 @@ def plot_distributions(x, y, col_labels = column_labels(), title="distributions"
 #         feature0 = feature0[feature0 != 0]
         # plot histogram
         n, bins, patches = \
-            ax_row[0].hist(feature0, histtype='step', bins=int(len(feature0)/1000), color="red", normed=True)
+            ax_row[0].hist(feature0, histtype='step', bins=int(len(feature0)/1000), color="red", normed=False)
         # plot distribution
         y = plt.mlab.normpdf(bins, np.mean(feature0), np.std(feature0))
         ax_row[1].plot(bins, y, 'r--', linewidth=1)
@@ -96,7 +136,7 @@ def plot_distributions(x, y, col_labels = column_labels(), title="distributions"
         for i in range(n_cols):
             ax_row[i].grid()
             ax_row[i].legend(["y = 1", "y = -1"])
-            ax_row[i].set_title(col_labels[feature])
+            ax_row[i].set_title(str(feature) + ": " + col_labels[feature])
             ax_row[i].set_ylabel(ylabels[i])
             ax_row[i].set_xlabel("feature values")
 
@@ -182,6 +222,174 @@ def clean_data(x,data_u):
     print(deletion_list.shape)
     return np.delete(x,deletion_list,axis=1),np.delete(data_u,deletion_list,axis=1)
 
+def move_outliers(x):
+    print("Managing the outliers")
+    # DER_mass_MMC
+    x[x[:, 0] > 700] = 700
+    
+    #DER_mass_transverse_met_lep
+    x[x[:, 1] > 300] = 300
+    
+    #DER_mas_vis
+    x[x[:, 2] > 500] = 500
+    
+    #DER_pt_h
+    x[x[:, 3] > 600] = 600
+    
+    #DER_mass_jet_jet
+    x[x[:, 5] > 2800] = 2800
+    
+    # DER_pt_tot
+    x[x[:, 8] > 400] = 400
+    
+    # DER_sum_pt
+    x[x[:, 9] > 1000] = 1000
+    
+    # DER_pt_ratio_lep_tau
+    x[x[:, 10] > 10] = 10
+    
+    # PRI_tau_pt
+    x[x[:, 13] > 300] = 300
+    
+    # PRI_lep_pt
+    x[x[:, 16] > 250] = 250
+    
+    # PRI_met
+    x[x[:, 19] > 450] = 450
+    
+    # PRI_met_sumet
+    x[x[:, 21] > 1100] = 1100
+    
+    # PRI_jet_leading_pt
+    x[x[:, 23] > 500] = 500
+    
+    # PRI_jet_subleading_pt
+    x[x[:, 26] > 250] = 250
+    
+    # PRI_jet_all_pt
+    x[x[:, 29] > 800] = 800
+    
+    return x
+
+def clean_x3(x):
+    x_loaded = x.copy()
+    
+    ncols = x_loaded.shape[1]
+    
+    # 1. compute the booleans columns
+    bool_cols = np.zeros((x_loaded.shape[0], 1))
+
+    # boolean columns from the only CATEGORICAL one
+    categorical = x_loaded[:, column_labels_map()["PRI_jet_num"]] # take the values    
+    for cat_value in [0, 1, 2, 3]:
+        #insert before the last one
+        bool_cols = np.insert(bool_cols, -1, categorical==cat_value, axis = 1)
+
+    # boolean column from the ones with a lot of -999
+    for col in range(ncols):
+        vals999 = x_loaded[:, col] == -999 
+        if np.sum(vals999) > 0:        
+            bool_cols = np.insert(bool_cols, -1, vals999, axis = 1) # != -999 => 0. == -999 => 1
+            
+     
+    # boolean column from the ones with a lot of 0
+    for col in [12, 29]:
+        vals0 = x_loaded[:, col] == 0 
+        if np.sum(vals0) > 0:  
+            bool_cols = np.insert(bool_cols, -1, vals0, axis = 1) # != -999 => 0. == -999 => 1
+
+    
+    bool_cols = bool_cols[:, :-1] # drop the initial empty column 
+    bool_cols = np.unique(bool_cols, axis=1) # drop the repeated columns 
+    
+    print(bool_cols.shape[1], "boolean columns have been created.") 
+    
+    # 1.5. Manage outliers
+    # x_loaded = move_outliers(x_loaded)
+    
+    # 2. drop: 
+        # the categorical column
+        # the 3 columns with equal distribution 
+        # the 2 columns which are highly correlated with another column
+    
+    lab_map= column_labels_map()
+    to_be_removed = [lab_map["PRI_jet_num"], lab_map["PRI_tau_phi"], lab_map["PRI_lep_phi"], lab_map["PRI_met_phi"], 9, 23]
+    to_be_removed.sort()
+    
+    x_loaded = np.delete(x_loaded, to_be_removed, axis=1) 
+    print(len(to_be_removed), "columns have been removed: ", to_be_removed)    
+
+    # 3. standardize and set to 0 the -999 entries
+    pos999 = x_loaded == 999 
+    pos0 = x_loaded == 0 
+    x_loaded, _, _ = standardize(x_loaded)
+    x_loaded[pos999] = 0
+    x_loaded[pos0] = 0
+    
+    return x_loaded, bool_cols
+
+def clean_x2(x_loaded, double=False):
+    x_all = x_loaded.copy()
+    
+    x_all = move_outliers(x_all)
+    
+    # fill -999 and 0 with the np.nan
+    x_all = fill_with_nan_list(x_all, nan_values=[0, -999])
+
+    # standardize
+    x_all, mean_x, std_x = standardize(x_all)
+
+    # substitute the nan values with something
+    x_all = sustitute_nans(x_all, substitutions=np.zeros(x_all.shape[1]))
+    
+    # reintegrate the useful information that was removed to standardize the dataset (add new columns to store these 
+    # "strange" numbers)
+    threshold = 1000
+
+    ncols = x_loaded.shape[1]
+    new_index = ncols
+    
+    # reintegrate -999s
+    for col in range(ncols):
+        vals999 = x_loaded[:, col] == -999 
+        sum_ = np.sum(vals999)
+        if sum_ > threshold:
+            print("-999:", sum_)
+            # add a (double) column for each 
+            
+            if double == True:
+                x_all = np.insert(x_all, new_index, vals999, axis = 1)
+                new_index += 1
+                x_all = np.insert(x_all, new_index, vals999-1, axis = 1)
+                new_index += 1
+            else:
+                x_all = np.insert(x_all, new_index, (vals999)*2-1, axis = 1) # != -999 => -1. == -999 => 1
+                new_index += 1
+
+    # reintregrate 0s
+    for col in range(ncols):
+        vals0 = x_loaded[:, col] == 0
+        sum_ = np.sum(vals0)
+        if sum_ > threshold:
+            print("0s:", sum_)
+            # add a column for each 
+            if double == True:
+                x_all = np.insert(x_all, new_index, vals0, axis = 1)
+                new_index += 1
+                x_all = np.insert(x_all, new_index, vals0-1, axis = 1)
+                new_index += 1
+            else:
+                x_all = np.insert(x_all, new_index, (vals0)*2-1, axis = 1) # != 0 => -1. == 0 => 1
+                new_index += 1
+
+    print("Added", new_index-ncols, "columns")
+    
+    to_be_removed = np.where(np.isin(column_labels(), ["PRI_tau_phi", "PRI_lep_phi", "PRI_met_phi"]))[0].tolist() + [9, 23]
+    print("Dropped:", to_be_removed)
+    x_all = np.delete(x_all, to_be_removed, axis=1) 
+    
+    return x_all
+    
 def clean_x(x_, corr, subs_func=None, bool_col=False):
     """ 
     bool_col = {True, False} if true creates a boolean column 
@@ -192,6 +400,9 @@ def clean_x(x_, corr, subs_func=None, bool_col=False):
     3. Treats the -999 depending on subs_func. 
     4. Standardises. 
     """
+    
+    col999 = np.sum(x_==-999, axis = 1)
+    
     ncol = x_.shape[1]
     
     # drop "invalid" and correlated columns
@@ -204,25 +415,27 @@ def clean_x(x_, corr, subs_func=None, bool_col=False):
     x_ = np.delete(x_, to_be_removed, axis=1)
     print(ncol - x_.shape[1], "columns have been dropped")
     
+    # add  bolean / sum columns
     if bool_col == True:
         count = 0
-        """
-        x_ = np.concatenate((x_, [[0]]*x_.shape[0]), axis=1)
-        x_[:, -1] = np.sum(x_==-999, axis = 1)
-        count += 1"""
         
-        """
+        x_ = np.concatenate((x_, [[0]]*x_.shape[0]), axis=1)
+        x_[:, -1] = col999 #np.sum(x_==-999, axis = 1)
+        count += 1
+        
+        
         if "PRI_jet_all_pt" in keptColumns:
             count += 1
             x_ = np.concatenate((x_, [[0]]*x_.shape[0]), axis=1)
             # set column to 1 (true) if PRI_jet_all_pt == 0 
-            x_[:, -1] = x_[:, -2] == 0"""
+            x_[:, -1] = x_[:, -2] == 0
         
+        """
         # creates a bool column, whose value is 1 if any of the other values in the row is 999, 0 otherwise
         for col in range(x_.shape[1]):
             x_col = x_[:, col]
             
-            nan_vals = x_col == -999
+            nan_vals = (x_col == -999)
             
             if np.any(nan_vals): # if there are -999 in this column, then add a boolean column to store this info 
                 count += 1
@@ -232,7 +445,7 @@ def clean_x(x_, corr, subs_func=None, bool_col=False):
                 # set column to 1 (true) if the row contains at least a -999
                 x_[:, -1] = nan_vals
 
-                keptColumns = np.append(keptColumns, "bool_"+keptColumns[col])
+                keptColumns = np.append(keptColumns, "bool_"+keptColumns[col])"""
                 
         print("Added", count , "bool columns")
         
@@ -412,8 +625,10 @@ def compute_loss(y, tx, w, costfunc=CostFunction.MSE):
         # However we have 30 dimension, therefore the grid search has a high complexity:
         # O(N^30) where N is the amount of trials per dimension.
         pred = predict_labels(w, tx)
-        y[y==0] = -1
-        num_correct = np.sum(pred==y)
+        y_ = y.copy()
+        y_[y_==0] = -1
+
+        num_correct = np.sum(pred==y_)
         return num_correct/len(y)
     
     return "Error, cost function not recognized"
