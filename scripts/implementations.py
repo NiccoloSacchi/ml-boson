@@ -283,27 +283,28 @@ def clean_x3(x):
     categorical = x_loaded[:, column_labels_map()["PRI_jet_num"]] # take the values    
     for cat_value in [0, 1, 2, 3]:
         #insert before the last one
-        bool_cols = np.insert(bool_cols, -1, categorical==cat_value, axis = 1)
+        bool_cols = np.column_stack((bool_cols, categorical==cat_value))
 
     # boolean column from the ones with a lot of -999
-    for col in range(ncols):
+    #for col in range(ncols):
+    for col in [0, 4, 5, 6, 12, 23, 24, 25, 26, 27, 28]: # hardcoded
         vals999 = x_loaded[:, col] == -999 
-        if np.sum(vals999) > 0:        
-            bool_cols = np.insert(bool_cols, -1, vals999, axis = 1) # != -999 => 0. == -999 => 1
-            
+        if np.sum(vals999) > 0: 
+            print(col)
+            bool_cols = np.column_stack((bool_cols, vals999)) # != -999 => 0. == -999 => 1
      
     # boolean column from the ones with a lot of 0
     for col in [12, 29]:
         vals0 = x_loaded[:, col] == 0 
         if np.sum(vals0) > 0:  
-            bool_cols = np.insert(bool_cols, -1, vals0, axis = 1) # != -999 => 0. == -999 => 1
+            bool_cols = np.column_stack((bool_cols, vals0))# != -999 => 0. == -999 => 1
 
     
-    bool_cols = bool_cols[:, :-1] # drop the initial empty column 
+    bool_cols = bool_cols[:, 1:] # drop the initial empty column 
     bool_cols = np.unique(bool_cols, axis=1) # drop the repeated columns 
     
     print(bool_cols.shape[1], "boolean columns have been created.") 
-    
+
     # 1.5. Manage outliers
     # x_loaded = move_outliers(x_loaded)
     
@@ -317,14 +318,59 @@ def clean_x3(x):
     to_be_removed.sort()
     
     x_loaded = np.delete(x_loaded, to_be_removed, axis=1) 
-    print(len(to_be_removed), "columns have been removed: ", to_be_removed)    
+    print(len(to_be_removed), "columns have been removed: ", to_be_removed)        
+    
+    # 3. set -999s and 0s to np.nan 
+    x_loaded = fill_with_nan_list(x_loaded, nan_values=[0, -999])
+    
+    # 4. split input dimensions
+    # load the perceintiles
+    file_path = "percentiles.json"
+    obj_text = codecs.open(file_path, 'r', encoding='utf-8').read()
+    b_new = json.loads(obj_text)
+    
+    scan_perc = b_new["scan_perc"]
+    col_perc = b_new["col_perc"]
+        
+    col_perc = np.delete(col_perc, to_be_removed, axis=1) # delete the same columns
+    if col_perc.shape[1] != x_loaded.shape[1]:
+        print("Something is wrong")
 
-    # 3. standardize and set to 0 the -999 entries
-    pos999 = x_loaded == 999 
-    pos0 = x_loaded == 0 
-    x_loaded, _, _ = standardize(x_loaded)
-    x_loaded[pos999] = 0
-    x_loaded[pos0] = 0
+    init_cols = range(x_loaded.shape[1])
+    for col in init_cols:
+        c = x_loaded[:, col].copy() # column to be splitted
+
+        for p in [scan_perc.index(25), scan_perc.index(50), scan_perc.index(100)]:
+            perc = col_perc[p, col] # take the value of the percentile
+            vals = (c<=perc)
+            #if not np.all(c1==c1[0]):
+            x_loaded = np.column_stack((x_loaded, vals*c))
+            c = c*(~vals)
+
+    x_loaded = np.delete(x_loaded, init_cols, axis=1)
+    x_loaded = fill_with_nan_list(x_loaded, nan_values=[0, -999])
+    
+    """
+    for times in range(3):
+        for col in range(x_loaded.shape[1]):
+            c = x_loaded[:, col].copy()
+            med = np.nanmedian(c)
+            #print(col, med, np.sum(c>med), np.sum(c<=med))
+
+            c1 = c*(c>med)
+            if not np.all(c1==c1[0]): # if it is a constant then don't add it
+                x_loaded[:, col] = c1
+
+            c1 = c*(c<=med)
+            if not np.all(c1==c1[0]):
+                x_loaded = np.insert(x_loaded, -1, c1, axis = 1)"""
+    
+    
+    
+    #before = x_loaded.shape[1]
+    #x_loaded = np.unique(x_loaded, axis=1)
+    #after = x_loaded.shape[1]
+    #print("Dropped", before-after, "equal columns")
     
     return x_loaded, bool_cols
 
