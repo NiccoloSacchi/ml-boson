@@ -225,16 +225,27 @@ def clean_data(x,data_u):
 
 #### definitive cleaning
 
-def clean_input_data(dataset_all, corr=1):
+def clean_input_data(dataset_all, output_all=np.array([]), corr=1):
+    """ Cleans the data:
+    1. Standardizes.
+    2. Split using the jet number
+    if output_all is != None that it splits it with the input
+    """
     
     dataset_all = standardize_final(dataset_all)
     
-    datasets = split_input_data(dataset_all, corr=corr)
+    datasets, outputs = split_input_data(dataset_all, output_all, corr=corr)
     
     # fill nan in the first column with 0s
-    return datasets
+    for i in range(len(datasets)):
+        nan_rows = np.isnan(datasets[i][:,0])
+        datasets[i][nan_rows, 0] = 0
+        # also append a boolean column to indicate the position of those -999 since 
+        # this information may still be usefull for determining the y
+        datasets[i] = np.column_stack((datasets[i], nan_rows))
+    return datasets, outputs
 
-def split_input_data(dataset_all, corr=1):
+def split_input_data(dataset_all, output_all=np.array([]), corr=1):
     """ This function will separate the input dataset into 4 datasets depending
     on the value in the categorical column PRI_jet_num (column 22):
     (1) one dataset for jet num = 0, 
@@ -247,13 +258,18 @@ def split_input_data(dataset_all, corr=1):
     in the set {0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}.
     """
 
-    def get_with_jet(dataset, jet_num): # given jet and dataset return the rows with th egiven jet number
-        return dataset[dataset[:, 22]==jet_num, :]
+    def get_with_jet(dataset, output_all, jet_num): # given jet and dataset return the rows with th egiven jet number
+        rows = dataset[:, 22]==jet_num
+        if output_all.size != 0:
+            return dataset[rows, :], output_all[rows]
+        else:
+            return dataset[rows, :], np.array([])
     
     num_jets = 4
     datasets = [None]*num_jets
+    outputs = [None]*num_jets
     for jet in range(num_jets):
-        curr_dataset = get_with_jet(dataset_all, jet)
+        curr_dataset, curr_output = get_with_jet(dataset_all, output_all, jet)
         # drop columns depending on the jet, drop always the PRI_jet_num (column 22)
         if jet == 0:
             to_drop = [4, 5, 6, 12, 22, 23, 24, 25, 26, 27, 28, 29] # 22 and 29 contains only 0s, the others only -999
@@ -267,8 +283,9 @@ def split_input_data(dataset_all, corr=1):
         
         curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
         datasets[jet] = curr_dataset
+        outputs[jet] = curr_output
 
-    return datasets
+    return datasets, outputs
 
 # helper function that, given a minimum correlation, return the list of columns that can be dropped 
 def correlated(corr = 0.8):
@@ -286,7 +303,7 @@ def correlated(corr = 0.8):
     }[corr]
 
 def standardize_final(data):
-    data = fill_with_nan_list(data, nan_values=[-999])
+    data[data==-999] = np.nan
     data = data - whole_data_means()
     data = data / whole_data_std_devs()
     return data
