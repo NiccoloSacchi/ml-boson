@@ -53,37 +53,6 @@ def column_labels_map():
     
 
 # DATA ANALYSIS FUNCTIONS
-def standardize_final(data):
-    data = fill_with_nan_list(data, nan_values=[0, -999])
-    data = data - whole_data_means()
-    data = data / whole_data_std_devs()
-    return data
-
-def whole_data_means():
-    return [  1.21867697e+02,   4.92532558e+01,   8.11405610e+01,
-          5.78582923e+01,   2.40500975e+00,   3.72181050e+02,
-         -8.29392140e-01,   2.37387138e+00,   1.89724461e+01,
-          1.58596159e+02,   1.43877554e+00,  -1.27303822e-01,
-          5.85210606e-01,   3.86981522e+01,  -1.16628927e-02,
-         -1.31600006e-02,   4.66924138e+01,  -1.90822693e-02,
-          4.94674822e-02,   4.16545265e+01,  -8.63571168e-03,
-          0             ,   1.63345672e+00,   8.49042850e+01, #previously 2.09908730e+02
-         -1.24824003e-03,  -1.88594668e-02,   5.78102860e+01,
-         -6.67041978e-03,  -1.04712859e-02,   1.22028164e+02]
-
-def whole_data_std_devs():
-    return [  5.69424463e+01,   3.53784047e+01,   4.05826830e+01,
-          6.34127052e+01,   1.74241673e+00,   3.98234556e+02,
-          3.58509472e+00,   7.80874852e-01,   2.19188873e+01,
-          1.16089739e+02,   8.45108795e-01,   1.19435749e+00,
-          3.58011984e-01,   2.24290027e+01,   1.21351057e+00,
-          1.81621078e+00,   2.21423233e+01,   1.26434229e+00,
-          1.81522730e+00,   3.24960932e+01,   1.81285268e+00,
-          1             ,   7.27633897e-01,   6.06494678e+01,#previously 1.26816608e+02
-          1.77958396e+00,   1.81550712e+00,   3.24553977e+01,
-          2.03190029e+00,   1.81616637e+00,   1.00796644e+02]
-
-
 def plot_features(x, col_labels = column_labels(), title="occurrencies"):
     """ Plot the features after dropping the -999 values. Can be used to find outliers. """
         
@@ -258,7 +227,7 @@ def clean_data(x,data_u):
 
 def clean_input_data(dataset_all, corr=1):
     
-    dataset_all, _, _ = standardize(dataset_all)
+    dataset_all = standardize_final(dataset_all)
     
     datasets = split_input_data(dataset_all, corr=corr)
     
@@ -277,7 +246,7 @@ def split_input_data(dataset_all, corr=1):
     drop decide the minimum correlation that you want between your columns. corr must be 
     in the set {0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}.
     """
-    
+
     def get_with_jet(dataset, jet_num): # given jet and dataset return the rows with th egiven jet number
         return dataset[dataset[:, 22]==jet_num, :]
     
@@ -294,7 +263,7 @@ def split_input_data(dataset_all, corr=1):
             to_drop = [22]
         
         to_drop = to_drop + correlated(corr)
-        print("Jet:", jet, "columns dropped:", to_drop)
+        print("Jet", jet, "columns dropped:", to_drop)
         
         curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
         datasets[jet] = curr_dataset
@@ -306,7 +275,7 @@ def correlated(corr = 0.8):
     """ Drop the correlated columns. This step may not improve the success ratio of the model
     but it will simplify it. corr must be in {0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}"""
     # corr_map maps the minimum correlation to the list of columns that can be droppped
-    corr_map = {
+    return {
         0.7: [3, 4, 6, 7, 15, 16, 18, 21, 22, 25, 28],
         0.75: [3, 4, 6, 16, 21, 22, 25, 28],
         0.8: [4, 6, 9, 18, 21, 22, 25],
@@ -314,7 +283,37 @@ def correlated(corr = 0.8):
         0.9: [3, 6, 9, 21, 28],
         0.95: [5, 21, 28],
         1: []
-    }
+    }[corr]
+
+def standardize_final(data):
+    data = fill_with_nan_list(data, nan_values=[-999])
+    data = data - whole_data_means()
+    data = data / whole_data_std_devs()
+    return data
+
+def whole_data_means():
+    return [  1.21867697e+02,   4.92532558e+01,   8.11405610e+01,
+          5.78582923e+01,   2.40500975e+00,   3.72181050e+02,
+         -8.29392140e-01,   2.37387138e+00,   1.89724461e+01,
+          1.58596159e+02,   1.43877554e+00,  -1.27303822e-01,
+          5.85210606e-01,   3.86981522e+01,  -1.16628927e-02,
+         -1.31600006e-02,   4.66924138e+01,  -1.90822693e-02,
+          4.94674822e-02,   4.16545265e+01,  -8.63571168e-03,
+          2.09908730e+02,   0,   8.49042850e+01, #previously 1.63345672e+00
+         -1.24824003e-03,  -1.88594668e-02,   5.78102860e+01,
+         -6.67041978e-03,  -1.04712859e-02,   1.22028164e+02]
+
+def whole_data_std_devs():
+    return [  5.69424463e+01,   3.53784047e+01,   4.05826830e+01,
+          6.34127052e+01,   1.74241673e+00,   3.98234556e+02,
+          3.58509472e+00,   7.80874852e-01,   2.19188873e+01,
+          1.16089739e+02,   8.45108795e-01,   1.19435749e+00,
+          3.58011984e-01,   2.24290027e+01,   1.21351057e+00,
+          1.81621078e+00,   2.21423233e+01,   1.26434229e+00,
+          1.81522730e+00,   3.24960932e+01,   1.81285268e+00,
+          1.26816608e+02,   1,                6.06494678e+01,#previously 7.27633897e-01
+          1.77958396e+00,   1.81550712e+00,   3.24553977e+01,
+          2.03190029e+00,   1.81616637e+00,   1.00796644e+02]
 
 ####
 
