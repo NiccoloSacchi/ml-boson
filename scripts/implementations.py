@@ -225,17 +225,20 @@ def clean_data(x,data_u):
 
 #### definitive cleaning
 
-def clean_input_data(dataset_all, output_all=np.array([]), corr=1):
+def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_expansion=False):
     """ Cleans the data:
     1. Standardizes.
     2. Split using the jet number
     if output_all is != None that it splits it with the input
     """
     
+    # 1. standardize
     dataset_all = standardize_final(dataset_all)
     
+    # 2. split the dataset
     datasets, outputs = split_input_data(dataset_all, output_all, corr=corr)
-    
+            
+    # 3. fill the nans with 0 and append a boolean column
     # fill nan in the first column with 0s
     for i in range(len(datasets)):
         nan_rows = np.isnan(datasets[i][:,0])
@@ -243,6 +246,25 @@ def clean_input_data(dataset_all, output_all=np.array([]), corr=1):
         # also append a boolean column to indicate the position of those -999 since 
         # this information may still be usefull for determining the y
         datasets[i] = np.column_stack((datasets[i], nan_rows))
+       
+    if dimension_expansion:
+        # 4. dimension expansion
+        file_path = "percentiles.json"
+        obj_text = codecs.open(file_path, 'r', encoding='utf-8').read()
+        percentiles = json.loads(obj_text)
+
+        for jet, curr_dataset in enumerate(datasets):
+            for col in range(curr_dataset.shape[1]-1): # scan columns (not the boolean one)
+                c = curr_dataset[:, col].copy() # column to be splitted
+                col_perc = percentiles[str(jet)][str(col)]
+                for perc in [col_perc["25"], col_perc["50"], col_perc["100"]]:
+                    vals = (c<=perc)
+                    #if not np.all(c1==c1[0]):
+                    curr_dataset = np.column_stack((curr_dataset, vals*c))
+                    c = c*(~vals)
+                # delete the splitted col
+                datasets[jet] = np.delete(curr_dataset, col, axis=1)
+            
     return datasets, outputs
 
 def split_input_data(dataset_all, output_all=np.array([]), corr=1):
@@ -257,7 +279,7 @@ def split_input_data(dataset_all, output_all=np.array([]), corr=1):
     drop decide the minimum correlation that you want between your columns. corr must be 
     in the set {0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}.
     """
-
+    
     def get_with_jet(dataset, output_all, jet_num): # given jet and dataset return the rows with th egiven jet number
         rows = dataset[:, 22]==jet_num
         if output_all.size != 0:
@@ -280,8 +302,8 @@ def split_input_data(dataset_all, output_all=np.array([]), corr=1):
         
         to_drop = to_drop + correlated(corr)
         print("Jet", jet, "columns dropped:", to_drop)
-        
         curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
+        
         datasets[jet] = curr_dataset
         outputs[jet] = curr_output
 
