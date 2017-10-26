@@ -53,31 +53,6 @@ def column_labels_map():
     
 
 # DATA ANALYSIS FUNCTIONS
-def whole_data_means():
-    return [  1.21867697e+02,   4.92532558e+01,   8.11405610e+01,
-          5.78582923e+01,   2.40500975e+00,   3.72181050e+02,
-         -8.29392140e-01,   2.37387138e+00,   1.89724461e+01,
-          1.58596159e+02,   1.43877554e+00,  -1.27303822e-01,
-          5.85210606e-01,   3.86981522e+01,  -1.16628927e-02,
-         -1.31600006e-02,   4.66924138e+01,  -1.90822693e-02,
-          4.94674822e-02,   4.16545265e+01,  -8.63571168e-03,
-          2.09908730e+02,   1.63345672e+00,   8.49042850e+01,
-         -1.24824003e-03,  -1.88594668e-02,   5.78102860e+01,
-         -6.67041978e-03,  -1.04712859e-02,   1.22028164e+02]
-
-def whole_data_std_devs():
-    return [  5.69424463e+01,   3.53784047e+01,   4.05826830e+01,
-          6.34127052e+01,   1.74241673e+00,   3.98234556e+02,
-          3.58509472e+00,   7.80874852e-01,   2.19188873e+01,
-          1.16089739e+02,   8.45108795e-01,   1.19435749e+00,
-          3.58011984e-01,   2.24290027e+01,   1.21351057e+00,
-          1.81621078e+00,   2.21423233e+01,   1.26434229e+00,
-          1.81522730e+00,   3.24960932e+01,   1.81285268e+00,
-          1.26816608e+02,   7.27633897e-01,   6.06494678e+01,
-          1.77958396e+00,   1.81550712e+00,   3.24553977e+01,
-          2.03190029e+00,   1.81616637e+00,   1.00796644e+02]
-
-
 def plot_features(x, col_labels = column_labels(), title="occurrencies"):
     """ Plot the features after dropping the -999 values. Can be used to find outliers. """
         
@@ -250,57 +225,65 @@ def clean_data(x,data_u):
 
 #### definitive cleaning
 
-def clean_input_data(dataset_all):
+def clean_input_data(dataset_all, corr=1):
     
     dataset_all, _, _ = standardize(dataset_all)
     
-    datasets = split_input_data(dataset_all)
-    
-    datasets = drop_correlated(datasets, corr = 0.8)
+    datasets = split_input_data(dataset_all, corr=corr)
     
     # fill nan in the first column with 0s
     return datasets
-# Steps in data cleaning:
 
-# 1.
-def split_input_data(dataset_all):
+def split_input_data(dataset_all, corr=1):
     """ This function will separate the input dataset into 4 datasets depending
     on the value in the categorical column PRI_jet_num (column 22):
     (1) one dataset for jet num = 0, 
     (2) one dataset for jet num = 1, 
     (3) one dataset for jet num = 2 
     (4) one dataset for jet num = 3.
-    We also drop, for each obtained dataset, the columns with only -999 values and substitute
-    with np.nan the -999 values in the first column.
+    We drop, for each obtained dataset, the columns with only -999 values and substitute
+    with np.nan the -999 values in the first column. Moreover, you can pass a corr != 1 to
+    drop decide the minimum correlation that you want between your columns. corr must be 
+    in the set {0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}.
     """
     
     def get_with_jet(dataset, jet_num): # given jet and dataset return the rows with th egiven jet number
         return dataset[dataset[:, 22]==jet_num, :]
-
     
     num_jets = 4
     datasets = [None]*num_jets
     for jet in range(num_jets):
         curr_dataset = get_with_jet(dataset_all, jet)
-        # drop columns depending on the jet (drop always the PRI_jet_num column)
-        # TODO drop the correlated columns (recompute correlation within the different datasets)
+        # drop columns depending on the jet, drop always the PRI_jet_num (column 22)
         if jet == 0:
             to_drop = [4, 5, 6, 12, 22, 23, 24, 25, 26, 27, 28, 29] # 22 and 29 contains only 0s, the others only -999
         elif jet == 1:
             to_drop = [4, 5, 6, 12, 22, 26, 27, 28]
         else:
             to_drop = [22]
-            
+        
+        to_drop = to_drop + correlated(corr)
+        print("Jet:", jet, "columns dropped:", to_drop)
+        
         curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
         datasets[jet] = curr_dataset
 
     return datasets
 
-# 2. (not necessary)
-def drop_correlated(datasets, corr = 0.8):
+# helper function that, given a minimum correlation, return the list of columns that can be dropped 
+def correlated(corr = 0.8):
     """ Drop the correlated columns. This step may not improve the success ratio of the model
-    but it will simplify it. corr must be in {0.7, 0.8, 0.9}"""
-
+    but it will simplify it. corr must be in {0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}"""
+    # corr_map maps the minimum correlation to the list of columns that can be droppped
+    corr_map = {
+        0.7: [3, 4, 6, 7, 15, 16, 18, 21, 22, 25, 28],
+        0.75: [3, 4, 6, 16, 21, 22, 25, 28],
+        0.8: [4, 6, 9, 18, 21, 22, 25],
+        0.85: [3, 6, 18, 21, 22, 28],
+        0.9: [3, 6, 9, 21, 28],
+        0.95: [5, 21, 28],
+        1: []
+    }
 
 ####
 
