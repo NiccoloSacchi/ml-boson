@@ -225,6 +225,16 @@ def clean_data(x,data_u):
 
 #### definitive cleaning
 
+def clean_input_data(dataset_all):
+    
+    dataset_all, _, _ = standardize(dataset_all)
+    
+    datasets = split_input_data(dataset_all)
+    
+    datasets = drop_correlated(datasets, corr = 0.8)
+    
+    # fill nan in the first column with 0s
+    return datasets
 # Steps in data cleaning:
 
 # 1.
@@ -242,10 +252,7 @@ def split_input_data(dataset_all):
     def get_with_jet(dataset, jet_num): # given jet and dataset return the rows with th egiven jet number
         return dataset[dataset[:, 22]==jet_num, :]
 
-    # 1. set to nan the -999 values in the first column (the other -999 values will be dropped)
-    dataset_all[dataset_all[:, 0] == -999, 0] = np.nan
     
-    # 2. Split the dataset
     num_jets = 4
     datasets = [None]*num_jets
     for jet in range(num_jets):
