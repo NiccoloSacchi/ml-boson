@@ -222,6 +222,57 @@ def clean_data(x,data_u):
     print(deletion_list.shape)
     return np.delete(x,deletion_list,axis=1),np.delete(data_u,deletion_list,axis=1)
 
+
+#### definitive cleaning
+
+# Steps in data cleaning:
+
+# 1.
+def split_input_data(dataset_all):
+    """ This function will separate the input dataset into 4 datasets depending
+    on the value in the categorical column PRI_jet_num (column 22):
+    (1) one dataset for jet num = 0, 
+    (2) one dataset for jet num = 1, 
+    (3) one dataset for jet num = 2 
+    (4) one dataset for jet num = 3.
+    We also drop, for each obtained dataset, the columns with only -999 values and substitute
+    with np.nan the -999 values in the first column.
+    """
+    
+    def get_with_jet(dataset, jet_num): # given jet and dataset return the rows with th egiven jet number
+        return dataset[dataset[:, 22]==jet_num, :]
+
+    # 1. set to nan the -999 values in the first column (the other -999 values will be dropped)
+    dataset_all[dataset_all[:, 0] == -999, 0] = np.nan
+    
+    # 2. Split the dataset
+    num_jets = 4
+    datasets = [None]*num_jets
+    for jet in range(num_jets):
+        curr_dataset = get_with_jet(dataset_all, jet)
+        # drop columns depending on the jet (drop always the PRI_jet_num column)
+        # TODO drop the correlated columns (recompute correlation within the different datasets)
+        if jet == 0:
+            to_drop = [4, 5, 6, 12, 22, 23, 24, 25, 26, 27, 28, 29] # 22 and 29 contains only 0s, the others only -999
+        elif jet == 1:
+            to_drop = [4, 5, 6, 12, 22, 26, 27, 28]
+        else:
+            to_drop = [22]
+            
+        curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
+        datasets[jet] = curr_dataset
+
+    return datasets
+
+# 2. (not necessary)
+def drop_correlated(datasets, corr = 0.8):
+    """ Drop the correlated columns. This step may not improve the success ratio of the model
+    but it will simplify it. corr must be in {0.7, 0.8, 0.9}"""
+
+
+####
+
+    
 def move_outliers(x):
     print("Managing the outliers")
     # DER_mass_MMC
