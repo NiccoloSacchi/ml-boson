@@ -5,57 +5,6 @@ import numpy as np
 from implementations import *
 from proj1_helpers import *
 
-def old_compute_loss(y, tx, w):
-    """Calculate the loss.
-
-    You can calculate the loss using mse or mae.
-    """
-    # ***************************************************
-    # INSERT YOUR CODE HERE
-    # TODO: compute loss by MSE
-    # ***************************************************
-    return np.sum((y-tx.dot(w))**2)/(2*tx.shape[0])
-
-def old_compute_gradient(y, tx, w):
-    """Compute the gradient."""
-    # ***************************************************
-    # INSERT YOUR CODE HERE
-    # TODO: compute gradient and loss
-    # ***************************************************
-
-    e = y-tx.dot(w)
-    return -tx.transpose().dot(e)/len(y)
-
-def old_stochastic_gradient_descent(
-        y, tx, initial_w, batch_size, max_iters, gamma):
-    """Stochastic gradient descent algorithm."""
-    # ***************************************************
-    # INSERT YOUR CODE HERE
-    # TODO: implement stochastic gradient descent.
-    # ***************************************************
-    best_w = initial_w
-    best_loss = pow(10,50)
-    w = initial_w
-    for n_iter in range(max_iters):
-        # ***************************************************
-        # INSERT YOUR CODE HERE
-        # TODO: compute gradient and loss
-        # ***************************************************
-        loss = compute_loss(y,tx,w)
-        gradient = old_compute_gradient(y,tx,w)
-        print(np.linalg.norm(gradient))
-        # ***************************************************
-        # INSERT YOUR CODE HERE
-        # TODO: update w by gradient
-        # ***************************************************
-        w = w-gamma*gradient
-        # store w and loss
-        if loss<best_loss:
-            best_loss = loss
-            best_w = w
-        
-
-    return best_loss,best_w
 
 def test_model_and_export(data_u,ids_u,w,degree):
     #u as "unknown"
@@ -67,32 +16,6 @@ def test_model_and_export(data_u,ids_u,w,degree):
     export_data = np.vstack((header,export_data))
     
     np.savetxt('../dataset/export.csv', export_data, fmt='%s', delimiter=',')
-    
-    
-#if sub_sample = true, we only load the first 100 lines of each set
-#for now only the first 100 lines version works
-def load_boson_data(sub_sample=True):
-    path_train_dataset = "train_100.csv"
-    path_test_dataset = "train_100.csv"
-    
-    ids_tr = np.genfromtxt(
-        path_train_dataset, delimiter=",", skip_header=1,usecols=0)
-        
-    predictions_tr = np.genfromtxt(
-        path_train_dataset,delimiter=",",skip_header=1,usecols=1,dtype=None,
-        converters={1: lambda x: 1 if b's' in x else -1})
-    
-    data_tr = np.genfromtxt(
-        path_train_dataset, delimiter=",", skip_header=1,usecols=range(2,32))
-    
-    ids_te = np.genfromtxt(
-        path_test_dataset, delimiter=",", skip_header=1,usecols=0)
-        
-    data_te = np.genfromtxt(
-        path_test_dataset, delimiter=",", skip_header=1,usecols=range(2,32))
-    
-    return ids_tr,predictions_tr,data_tr, ids_te, data_te
-
 
 def equalize_predictions(predictions,data):
     count_s = 0

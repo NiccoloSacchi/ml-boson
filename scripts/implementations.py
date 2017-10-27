@@ -166,7 +166,7 @@ def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_exp
        
     if dimension_expansion:
         # 4. dimension expansion
-        file_path = "percentiles.json"
+        file_path = "metadata/percentiles.json"
         obj_text = codecs.open(file_path, 'r', encoding='utf-8').read()
         percentiles = json.loads(obj_text)
 
@@ -174,7 +174,8 @@ def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_exp
             for col in range(curr_dataset.shape[1]-1): # scan columns (not the boolean one)
                 c = curr_dataset[:, col].copy() # column to be splitted
                 col_perc = percentiles[str(jet)][str(col)]
-                for perc in [col_perc["25"], col_perc["50"], col_perc["100"]]:
+                #print([p for p in col_perc if (int(p)%50 == 0 and int(p) != 0)])
+                for perc in [col_perc[p] for p in col_perc if (int(p)%50 == 0 and int(p) != 0)]:
                     vals = (c<=perc)
                     #if not np.all(c1==c1[0]):
                     curr_dataset = np.column_stack((curr_dataset, vals*c))
