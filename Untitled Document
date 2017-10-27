@@ -1,3 +1,0 @@
-split inputs depending on the jet numbers (and train different inputs independently)
-standardize -> build poly -> /std (for logistic regression)
-when standardizing the test set use same mean and std
