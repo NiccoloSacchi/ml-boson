@@ -55,12 +55,43 @@ references to further improve his or her writing skills.
 \section{Models and Methods}
 \label{sec:mod_meth}
 
-There were two main parts of developing our ML system, data analysis and algorithmic design. While the first one focused on the nature, intricacies and interconnexions of the raw data and its preparation, the second one focused on the treatment of said data after refining. Let us now delve a bit further into those two aspects.
+There were two main parts of developing our ML system, data analysis and algorithmic design. While the first one focused on the nature, intricacies and interconnections of the raw data and its preparation, the second one focused on the treatment of said data after refining. Let us now delve a bit further into those two aspects.
 
-\subsection{Data Analysis and exploration}
-With a dataset of 250'000 items and 30 features
+\subsection{Data Analysis and Exploration}
+With a dataset of 250'000 items and 30 features, there was a lot of data to work with. To get a better sense of its nature, we used various mathematical tools. Those were applied on the whole dataset (train + test) when possible and only on the training set when the analysis was related to the prediction. The following are the tools we used :
+\begin{enumerate}
+\item Outliers Analysis
+The first thing to do to get a better sense of the data was to plot it. We thus plotted the whole dataset by feature and observed if could find any outliers or discrepancies. There were indeed a few outliers but considering the vast amount of data otherwise available, we decided to simply ignore them.
 
-\subsection{Algorithms used}
+\item Distribution Analsysis :
+We wanted to see how features values were distributed over both the signal data and the background data. Indeed, we made the assumptions that if two features had a similar distribution between the two sets, then this feature would only have limited prediction power. Among all features, four were spotted to have the almost exact same distributions. Those are "PRI\_tau\_phi", "PRI\_lep\_pt", "PRI\_lep\_phi" and "PRI\_met\_phi". We decided to try to drop those columns to see to what extent it changed the resulting predictions, if any.
+
+\item PRI\_jet\_num-based Split :
+After looking further at the data, we noticed that there were a lot of -999 values spread on the dataset. More importantly, we noticed that the amount of those values depends greatly on one particular feature, which happens to be the same categorical feature : "PRI\_jet\_num", representing the number of "jet events" (a physics term unknown to us) occurring at every event. For instance, if this feature has value 0, then 10 other features will have only -999 values and 26\% of the first feature will be -999, as per if it has a 3 value, then no feature is all -999 and only 1.4\% of the first feature will be -999.
+For this reason, we decided to drop the following features depending on the "PRI\_jet\_num" feature's value. This lists the features dropped by their index in the feature list.
+\begin{enumerate}
+\item jet = 0 : [4, 5, 6, 12, 22, 23, 24, 25, 26, 27, 28, 29]
+\item jet = 1 : [4, 5, 6, 12, 22, 26, 27, 28]
+\item jet = 2 : [22]
+\item jet = 3 : [22]
+\end{enumerate}
+Note that we also dropped column 22 which corresponds to the jet feature itself. Indeed, we figured that by giving as much importance to this feature, we would not need it any more to classify our data.
+
+\item Correlation Analysis :
+After splitting the data into four subsets and making the assumption that two (or more) highly-correlated features must have roughly the same impact when predicting the label of an item, we computed the correlations between each pairs of features for different correlation values (e.g. >0.6, >0.8, >0.9 and =1) and identified the more or less correlated features.
+
+
+\item Standardization :
+To standardize the data we decided to use the whole dataset to compute the means and standard deviations while carefully not considering the -999 values and hardcoded those values so we could reuse them later without having to compute them every time. 
+
+\item Percentiles Computation :
+A technique we tried and that allowed to increase the ratio of correctly predicted outputs is what we called dimension expansion. We divided each feature in N features using the percentiles. e.g. if N=2 we took the median and split a column in 2 new columns, one with all the entries below the median and one with all the entries above the median. This allowed to split the dimension of the input in different intervals in which the regression can be trained independently (imagine if you have to fit an exponential with a 1-degree polynomial, you split the input in 2 and use two 1-degree polynomials instead of 1). Similarly to the standardization, we computed the distributions of the items among the percentiles and stored them so we could reuse them without having to compute them again every time.
+
+\end{enumerate}
+
+%this is a bit cheesy, will change it later
+With those tools applied to our data, we were ready to actually  train our model.
+\subsection{Algorithms and Techniques}
 
 
 \section{Results}
