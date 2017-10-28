@@ -55,6 +55,7 @@ def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_exp
     an explanation). dimension_expansion must be an integeger in {1, 2, 4, 5, 10}.
     """
     
+    # 0.
     dataset_all = move_outliers(dataset_all)
     
     # 1
@@ -84,6 +85,12 @@ def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_exp
         # pass also bool_col to know if the last one is a boolean column
         datasets = expand_dimensions(datasets, remaining_columns, dimension_expansion, bool_col) 
         
+    """
+    for jet in datasets.keys():
+        log_me = datasets[jet].copy()
+        log_me[log_me == 0] = 1
+        datasets[jet] = np.column_stack((datasets[jet], np.log(log_me)))
+        datasets[jet][np.isnan(datasets[jet])] = 0"""
     return datasets, outputs
 
 def split_input_data(dataset_all, output_all=np.array([])):
@@ -251,7 +258,7 @@ def whole_data_std_devs():
           2.03190029e+00,   1.81616637e+00,   1.00796644e+02]
 
 def move_outliers(x):
-    print("Managing the outliers")
+    print("Capping the outliers")
     # DER_mass_MMC
     x[x[:, 0] > 700] = 700
     
