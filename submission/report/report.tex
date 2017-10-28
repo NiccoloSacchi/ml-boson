@@ -8,7 +8,7 @@
 \title{Higgs Boson Challenge : Finding evidence of the particle's presence using Machine Learning}
 
 \author{
-  Niccolo Sacchi, Antonio [???] & Valentin Nigolian\\
+  Niccolo Sacchi, Antonio [???] \& Valentin Nigolian\\
   \textit{Department of Computer Science, EPFL Lausanne, Switzerland}
 }
 
@@ -61,7 +61,14 @@ There were two main parts of developing our ML system, data analysis and algorit
 With a dataset of 250'000 items and 30 features, there was a lot of data to work with. To get a better sense of its nature, we used various mathematical tools. Those were applied on the whole dataset (train + test) when possible and only on the training set when the analysis was related to the prediction. The following are the tools we used :
 \begin{itemize}
 \item Outliers Analysis
-The first thing to do to get a better sense of the data was to plot it. We thus plotted the whole dataset by feature and observed if could find any outliers or discrepancies. There were indeed a few outliers but considering the vast amount of data otherwise available, we decided to simply ignore them.
+The first thing to do to get a better sense of the data was to plot it. We thus plotted the whole dataset by feature and observed if could find any outliers or discrepancies. There were indeed multiple outliers which we removed from the dataset. See fig. \ref{fig:outliers} for an example.
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{outliers}
+  \caption{Values of all data items for the DER\_pt\_tot feature. The graph shows a relatively small number of outliers. In this example, all items with values above 400 for this feature were removed.}
+  \vspace{-3mm}
+  \label{fig:outliers}
+\end{figure}
 
 \item Distribution Analsysis :
 We wanted to see how features values were distributed over both the signal data and the background data. Indeed, we made the assumptions that if two features had a similar distribution between the two sets, then this feature would only have limited prediction power. Among all features, four were spotted to have the almost exact same distributions. Those are "PRI\_tau\_phi", "PRI\_lep\_pt", "PRI\_lep\_phi" and "PRI\_met\_phi". We decided to try to drop those columns to see to what extent it changed the resulting predictions, if any.
@@ -109,7 +116,7 @@ and spend more time trying to increase its performance.
 
 
 \section{Results}
-Our model yielded a precision of (???)\% on the training set and resulted on a (???)\% precision on the test data according to the Kaggle website. Those results allowed us to each the top (???)\% of the leaderboard on Kaggle. While not being as high as we hoped, we found those results to be good enough, especially when considering that we started from ~65\%.
+ Since we split our dataset into four groups depending on the jet number, we obtained different precision depending on the group. In total, our model yielded a precision of (???)\% on the training set and resulted on a (???)\% precision on the test data according to the Kaggle website. Those results allowed us to each the top (???)\% of the leaderboard on Kaggle. While not being as high as we hoped, we found those results to be good enough, especially when considering that we started from ~65\%.
 
 \section{Discussion}
 Overall, we are satisfied with our results, although it was exponentially more difficult to increase our score and required a lot of work. There are a few techniques given in the course, such as cross-validation and model selection methods, that we tried to use but to no significant avail. Indeed, we did not find any sign of over-fitting in our system and thus saw no use of cross-validation.
