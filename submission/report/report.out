@@ -1,8 +1,13 @@
 \BOOKMARK [1][-]{section.1}{Introduction}{}% 1
 \BOOKMARK [1][-]{section.2}{Models and Methods}{}% 2
 \BOOKMARK [2][-]{subsection.2.1}{Data Analysis and Exploration}{section.2}% 3
-\BOOKMARK [2][-]{subsection.2.2}{Algorithms and Techniques}{section.2}% 4
-\BOOKMARK [3][-]{subsubsection.2.2.1}{Method Selection}{subsection.2.2}% 5
-\BOOKMARK [3][-]{subsubsection.2.2.2}{Hyperparameters Selection}{subsection.2.2}% 6
-\BOOKMARK [1][-]{section.3}{Results}{}% 7
-\BOOKMARK [1][-]{section.4}{Discussion}{}% 8
+\BOOKMARK [3][-]{subsubsection.2.1.1}{Outliers Analysis}{subsection.2.1}% 4
+\BOOKMARK [3][-]{subsubsection.2.1.2}{Distribution Analsysis}{subsection.2.1}% 5
+\BOOKMARK [3][-]{subsubsection.2.1.3}{PRI\137jet\137num-based Split}{subsection.2.1}% 6
+\BOOKMARK [3][-]{subsubsection.2.1.4}{Standardization}{subsection.2.1}% 7
+\BOOKMARK [3][-]{subsubsection.2.1.5}{Percentiles Computation}{subsection.2.1}% 8
+\BOOKMARK [2][-]{subsection.2.2}{Algorithms and Techniques}{section.2}% 9
+\BOOKMARK [3][-]{subsubsection.2.2.1}{Method Selection}{subsection.2.2}% 10
+\BOOKMARK [3][-]{subsubsection.2.2.2}{Hyperparameters Selection}{subsection.2.2}% 11
+\BOOKMARK [1][-]{section.3}{Results}{}% 12
+\BOOKMARK [1][-]{section.4}{Discussion}{}% 13
