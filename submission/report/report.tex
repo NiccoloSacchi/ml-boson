@@ -15,42 +15,18 @@
 \maketitle
 
 \begin{abstract}
-  A critical part of scientific discovery is the
-  communication of research findings to peers or the general public.
-  Mastery of the process of scientific communication improves the
-  visibility and impact of research. While this guide is a necessary
-  tool for learning how to write in a manner suitable for publication
-  at a scientific venue, it is by no means sufficient, on its own, to
-  make its reader an accomplished writer. 
-  This guide should be a starting point for further development of 
-  writing skills.
+  The goal of this project was to use machine learning algorithms to effectively predict the decay  signature of particle collisions at CERN, to understand if this event's signature was the result of a Higgs boson (signal) or something else (background). We have developed binary classification techniques for signal/background separation, and applied our methods to a test dataset in the Kaggle platform.
+  A score of 0.829 was achieved after several implementations, which is not an ending point but a solid base point for further and more complex studies.
 \end{abstract}
 
 \section{Introduction}
 
-The aim of writing a paper is to infect the mind of your reader with
-the brilliance of your idea~\cite{jones08}. 
-The hope is that after reading your
-paper, the audience will be convinced to try out your idea. In other
-words, it is the medium to transport the idea from your head to your
-reader's head. 
-In the following
-section, we show a common structure of scientific papers and briefly
-outline some tips for writing good papers in
-Section~\ref{sec:tips-writing}.
+To achieve such a challenging and complex goal we needed to split up the process into subtasks, starting from a simple model, evaluating it, and trying to figure out how it could be improved.
+First of all we performed some exploratory data analysis to understand the training and the test dataset. The training data consist of 250000 events, with an ID column, a label column, and 30 feature columns. The test set has 568238 events, and is missing the label column.
+We tried to run different models on the whole dataset at first, and despite it was not performing well we figured out that the logistic regression was the way to go.
+The following section shows how we managed to get a final good result improving step by step trough feature processing and methods tuning.
 
-At that
-point, it is important that the reader is able to reproduce your
-work~\cite{schwab00,wavelab,gentleman05}. This is why it is also
-important that if the work has a computational component, the software
-associated with producing the results are also made available in a
-useful form. Several guidelines for making your user's experience with
-your software as painless as possible is given in
-Section~\ref{sec:tips-software}.
 
-This brief guide is by no means sufficient, on its own, to
-make its reader an accomplished writer. The reader is urged to use the
-references to further improve his or her writing skills.
 
 \section{Models and Methods}
 \label{sec:mod_meth}
