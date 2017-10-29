@@ -15,42 +15,18 @@
 \maketitle
 
 \begin{abstract}
-  A critical part of scientific discovery is the
-  communication of research findings to peers or the general public.
-  Mastery of the process of scientific communication improves the
-  visibility and impact of research. While this guide is a necessary
-  tool for learning how to write in a manner suitable for publication
-  at a scientific venue, it is by no means sufficient, on its own, to
-  make its reader an accomplished writer. 
-  This guide should be a starting point for further development of 
-  writing skills.
+  The goal of this project was to use machine learning algorithms to effectively predict the decay  signature of particle collisions at CERN, to understand if this event's signature was the result of a Higgs boson (signal) or something else (background). We have developed binary classification techniques for signal/background separation, and applied our methods to a test dataset in the Kaggle platform.
+  A score of 0.829 was achieved after several implementations, which is not an ending point but a solid base point for further and more complex studies.
 \end{abstract}
 
 \section{Introduction}
 
-The aim of writing a paper is to infect the mind of your reader with
-the brilliance of your idea~\cite{jones08}. 
-The hope is that after reading your
-paper, the audience will be convinced to try out your idea. In other
-words, it is the medium to transport the idea from your head to your
-reader's head. 
-In the following
-section, we show a common structure of scientific papers and briefly
-outline some tips for writing good papers in
-Section~\ref{sec:tips-writing}.
+To achieve such a challenging and complex goal we needed to split up the process into subtasks, starting from a simple model, evaluating it, and trying to figure out how it could be improved.
+First of all we performed some exploratory data analysis to understand the training and the test dataset. The training data consist of 250000 events, with an ID column, a label column, and 30 feature columns. The test set has 568238 events, and is missing the label column.
+We tried to run different models on the whole dataset at first, and despite it was not performing well we figured out that the logistic regression was the way to go.
+The following section shows how we managed to get a final good result improving step by step trough feature processing and methods tuning.
 
-At that
-point, it is important that the reader is able to reproduce your
-work~\cite{schwab00,wavelab,gentleman05}. This is why it is also
-important that if the work has a computational component, the software
-associated with producing the results are also made available in a
-useful form. Several guidelines for making your user's experience with
-your software as painless as possible is given in
-Section~\ref{sec:tips-software}.
 
-This brief guide is by no means sufficient, on its own, to
-make its reader an accomplished writer. The reader is urged to use the
-references to further improve his or her writing skills.
 
 \section{Models and Methods}
 \label{sec:mod_meth}
@@ -94,6 +70,8 @@ To standardize the data we decided to use the whole dataset to compute the means
 \item Percentiles Computation :
 A technique we tried and that allowed to increase the ratio of correctly predicted outputs is what we called dimension expansion. We divided each feature in N features using the percentiles. e.g. if N=2 we took the median and split a column in 2 new columns, one with all the entries below the median and one with all the entries above the median. This allowed to split the dimension of the input in different intervals in which the regression can be trained independently (imagine if you have to fit an exponential with a 1-degree polynomial, you split the input in 2 and use two 1-degree polynomials instead of 1). Similarly to the standardization, we computed the distributions of the items among the percentiles and stored them so we could reuse them without having to compute them again every time.
 
+\item We concatenated to each one of the four datasets its logarithm and noticed that the performance of our model increased. Therefore, we concluded that the output potentially depended logarithmically on some of the features. 
+
 \end{itemize}
 
 %a bit cheesy, will change it later
@@ -113,6 +91,13 @@ We tested our models by training them with an increasing number of data items an
 Using these tools on ridge regression, stochastic gradient descent and logistic regression and it appeared that logistic regression was generally better than the other methods. We thus chose to refine this method
 and spend more time trying to increase its performance. 
 \subsubsection{Hyperparameters Selection}
+After several trials we understood that a high polynomial degree did not increase much the ratio of correct predictions. Therefore, we applied some of the aforementioned techniques to increase the performance of our model. Here we list how and why we choose our hyperparameters:
+\begin{itemize}
+\item We used a 2-degree polynomial. Thanks to dimension expansion we could use a simpler polynomial in smaller intervals of each feature, i.e. we splitted every feature into five intervals therefore increasing the number of features by a factor of five. Moreover, we concatenated to each one of the four datasets its logarithm (before building the polynomial). These steps were taken in the following order: (1) split the features, (2) compute and concatenate the logarithm of the dataset, (3) build the polynomial.  
+
+\item We used an array of gammas. We noticed that the higher the degree the lower was the gamma needed to have a stable gradient descent leading to a higher coverging time. Therefore, instead of using a scalar gamma we used an array of gammas and tuned them independently. In particular, this array of gammas is as long as the gradient of L(w) and allowed us to choose a different step size for different parts of the gradient therefore achieving more versatility. Another solution we tried is to normalize after building the polynomial, but we achieved a higher converging time with the latter therefore we opted for the array of gammas.
+\end{itemize}
+Notice that we decided not to use cross validation with logistic gradient descent because (1) we were using low degree polynomials therefore reducing the variance of our model and (2) we already used cross validation with ridge regression and did not obtained any noticeable overfitting.
 
 
 \section{Results}
