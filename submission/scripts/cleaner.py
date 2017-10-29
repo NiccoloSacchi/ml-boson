@@ -162,9 +162,6 @@ def percentiles_to_scan(col_perc, N):
         return [col_perc[p] for p in col_perc if (int(p)%10 == 0 and int(p) != 0)]
     print("Invalid dimension_expansion parameter, it should be in {1, 2, 4, 5, 10}")
 
-#[col_perc[p] for p in col_perc if (int(p)%50 == 0 and int(p) != 0)]
-
-
 def drop_with_corr(datasets, corr):
     remaining_columns = {}
     for jet in datasets: 
@@ -316,7 +313,7 @@ def concatenate_log(xs, mean_log=[], std_log=[]):
     for jet in range(4):
         d = xs[jet].copy()
         log_me = np.abs(d)
-        log_me[log_me < 1e-320] = 1
+        log_me[log_me < 1e-320] = 1 # just to avoid that the log returns -Inf
         xs_log = np.log(log_me)
 
         if train:              # if so then we are standardizing the train set 
