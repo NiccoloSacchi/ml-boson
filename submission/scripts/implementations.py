@@ -186,7 +186,7 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=
             # compute next w
             g = compute_gradient(y_batch, tx_batch, w, costfunc=costfunc) # relative to only the batch
             w = w - gamma*g  
-            
+
             if n_iter % ouptut_step == 0 or n_iter==max_iters-1:
                 curr_loss = compute_loss(y, tx, w, lambda_, costfunc=costfunc)
                 succ_ratio = compute_loss(y, tx, w, costfunc=CostFunction.SUCCESS_RATIO)

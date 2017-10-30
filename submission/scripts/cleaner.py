@@ -125,7 +125,7 @@ def split_input_data(dataset_all, output_all=np.array([])):
         curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
         to_drop = to_drop + [15, 16, 18, 20] # drop also equally distributed columns
         to_drop.sort()
-        print("Jet", jet, "columns dropped:", to_drop)
+        #print("Jet", jet, "columns dropped:", to_drop)
 
         datasets[jet] = curr_dataset
         outputs[jet] = curr_output
