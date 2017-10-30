@@ -1,8 +1,8 @@
  _____________________________________________
 
-MACHINE LEARNING COURSE - EPFL
-PROJECT 1 - HIGGS BOSON CHALLENGE
-Autumn 2017
+MACHINE LEARNING COURSE - EPFL  
+PROJECT 1 - HIGGS BOSON CHALLENGE  
+Autumn 2017  
 
 ---------------------------------------------
 Authors :
