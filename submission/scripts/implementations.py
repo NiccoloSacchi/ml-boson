@@ -39,7 +39,7 @@ def logistic_regression(y, tx, initial_w, max_iters, gamma):
 
 
 def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
-    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=lambda_, num_batches=1, plot_losses=False, print_output=True, ouptut_step=100, costfunc=CostFunction.LIKELIHOOD)
+    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=lambda_, num_batches=1, plot_losses=False, print_output=False, ouptut_step=100, costfunc=CostFunction.LIKELIHOOD)
     
     
 #### BUILD TX

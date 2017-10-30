@@ -3,7 +3,7 @@
 from proj1_helpers import load_csv_data, create_csv_submission, predict_labels
 import numpy as np
 from cleaner import clean_input_data, concatenate_log
-from implementations import build_poly, logistic_regression, compute_loss
+from implementations import build_poly, logistic_regression, compute_loss, CostFunction
 
 # (CHECK THE PATHs ARE CORRECT)
 train_data_path = "../../dataset/train.csv"
@@ -48,13 +48,15 @@ def logistic_regression_on_jet(jet):
     
     initial_w = weigths[jet] #np.zeros((tx.shape[1], 1)) #
     max_iters = 2000
-    return logistic_regression(y, tx, initial_w, max_iters, gammas[jet])
+    print("-Logistic regression on dataset", str(jet) + "/3")
+    _, w = logistic_regression(y, tx, initial_w, max_iters, gammas[jet])
+    #print("Success ratio obtained: ", str(compute_loss(ys[jet], tx, weigths[jet], costfunc=CostFunction.SUCCESS_RATIO)))
+    return w
    
 print("Starting to run the logistic regression:")
 weigths = [np.zeros((tx.shape[1])) for tx in txs]*4
 for jet in range(4):
-    print("-Logistic regression on dataset", str(jet) + "/3")
-    _, weigths[jet] = logistic_regression_on_jet(jet)
+    weigths[jet] = logistic_regression_on_jet(jet)
 
 # 6. Load the test data 
 print("Loading test data...")

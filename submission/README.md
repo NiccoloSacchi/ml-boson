@@ -89,7 +89,7 @@ This folder contains all of our scripts and notebooky which are the following :
 
 5.2.1 PYTHON SCRIPTS : There are 5 python files to run our system. cleaner.py contains multiple functions to clean and transform the data to suit our needs. plots.py provides ways to visualize various aspects of the data (distributions, outliers, etc.). implementations.py contains the six Machine Learning algorithms required from the project description and run.py runs the full leanring process on the training data and uses it to make predictions on the testing data. There is also the proj1_help.py file which provides basic loading and writing functions.
 
-5.2.2 JUPYTER NOTEBOOKS : There are two Jupyter notebooks in the folder. run.ipynb simply runs the exact same code as run.py and data_analysis.ipnyb gives more details about how the data is cleaned and prepared, along with multiple visuals.
+5.2.2 JUPYTER NOTEBOOKS : There is one Jupyter notebook in the folder called "project1_machine_learning_2017.ipnyb" which gives more details about how the data is cleaned and prepared, along with multiple visuals.
 
 
 
