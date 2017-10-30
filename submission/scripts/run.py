@@ -19,6 +19,7 @@ y_loaded = y_loaded.reshape((-1, 1))
 print("Train data loaded")
 
 # 2. clean the train data and concatenate to each dataset its log
+print("Cleaning the data...")
 xs, ys = clean_input_data(x_loaded.copy(), y_loaded.copy(), corr=1, dimension_expansion=5, bool_col=True)
 for jet in range(4): # set -1 to 0 
     ys[jet][ys[jet]== -1] = 0 
@@ -64,6 +65,7 @@ y_te_loaded, x_te_loaded, ids_te_loaded = load_csv_data(test_data_path, sub_samp
 print("Test data loaded")
 
 # 6. Clean and append the log (in the same exact way we did with the train set)
+print("Cleaning the data...")
 x_te, ids_te = clean_input_data(x_te_loaded.copy(), ids_te_loaded.copy(), corr=1, dimension_expansion=5, bool_col=True)
 
 x_te, _, _ = concatenate_log(x_te.copy(), mean_log=mean_log, std_log=std_log)
