@@ -1,4 +1,4 @@
- _____________________________________________
+_____________________________________________
 
 MACHINE LEARNING COURSE - EPFL  
 PROJECT 1 - HIGGS BOSON CHALLENGE  
@@ -9,7 +9,7 @@ Authors :
 Antonio Barbera  Valentin Nigolian
 Niccolò Sacchi
 
-________________________________________________
+_____________________________________________
 
 
 This README is organized as follows :
