@@ -31,14 +31,14 @@ degree = 2
 txs = [None]*4
 for jet in range(4):
     txs[jet] = build_poly(xs[jet], degree)
-print("The train polynomials have been built")
+print("The train polynomials have been built.")
     
 # 4. Set the array of gammas for the logistic regression
-gamma_constants = [1e-5, 1e-6] # one ofr the degree 1 and one for the degree 2
+gamma_constants = [1e-5, 1e-6] # one for the degree 1 and one for the degree 2
 gammas = [None]*4
 for jet in range(4):
     ncolumns = xs[jet].shape[1]
-    gammas[jet] = np.concatenate([[gamma_constants[0]]] + [ncolumns*[g] for g in gamma_constants])\
+    gammas[jet] = np.concatenate([[gamma_constants[0]]] + [ncolumns*[g] for g in gamma_constants[:degree]])\
         .reshape((-1,1))
 
 # 5. run the logistic regression on the four datasets
@@ -71,7 +71,7 @@ print("Test data cleaned.")
 tx_te = []
 for jet in range(4):
     tx_te.append(build_poly(x_te[jet], degree))
-print("The test polynomials have been built")
+print("The test polynomials have been built.")
 
 # 8. Predict and concatenate the predicitions
 y_te_pred = []
@@ -88,4 +88,4 @@ print("I predicted ", str((y_pred==-1).sum()), "-1s and ", str((y_pred==1).sum()
 # 9. Store the predictions 
 sub_file_name = "predictions"
 create_csv_submission(ids, y_pred, sub_file_name)
-print("Prediction store in file" + sub_file_name)
+print("Prediction stored in file '" + sub_file_name+"'")

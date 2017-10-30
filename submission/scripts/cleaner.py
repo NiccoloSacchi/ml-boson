@@ -121,10 +121,12 @@ def split_input_data(dataset_all, output_all=np.array([])):
             to_drop = [4, 5, 6, 12, 22, 26, 27, 28]
         else:
             to_drop = [22]
-        
-        print("Jet", jet, "useless columns dropped:", to_drop)
+
         curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
-        
+        to_drop = to_drop + [15, 16, 18, 20] # drop also equally distributed columns
+        to_drop.sort()
+        print("Jet", jet, "columns dropped:", to_drop)
+
         datasets[jet] = curr_dataset
         outputs[jet] = curr_output
 
@@ -197,7 +199,7 @@ def correlated(jet, corr):
             0.75: [3, 17, 18, 21],
             0.8: [6, 18, 21],
             0.85: [6, 18, 21],
-            0.9: [3, 6, 21],
+            0.9: [3, 6, 21], 
             0.95: [21],
             1: []
         },
