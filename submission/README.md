@@ -17,16 +17,21 @@ This README is organized as follows :
 1. MOTIVATION
 2. THE DATA
 3. SYSTEM OVERVIEW  
-  3.1. DATA PREPARATION  
-    3.1.1. OUTLIERS REMOVAL  
-    3.1.2. DISTRIBUTION ANALYSIS  
-    3.1.3. DATASET SPLIT  
-    3.1.4. STANDARDIZATION  
-    3.1.5. PERCENTILES SPLIT  
-  3.2. TRAINING MODEL  
-    3.2.1. ALGORITHM USED  
-    3.2.1. HYPERPARAMETERS  
-4. RUNNING THE SYSTEM  
+  3.1 DATA PREPARATION  
+    3.1.1 OUTLIERS REMOVAL  
+    3.1.2 DISTRIBUTION ANALYSIS  
+    3.1.3 DATASET SPLIT  
+    3.1.4 STANDARDIZATION  
+    3.1.5 PERCENTILES SPLIT  
+  3.2 TRAINING MODEL  
+    3.2.1 ALGORITHM USED  
+    3.2.1 HYPERPARAMETERS  
+5. CONTENTS  
+  5.1 REPORT  
+  5.2 SCRIPTS FOLDER  
+    5.2.1 PYTHON SCRIPTS  
+    5.2.2 JUPYTER NOTEBOOKS  
+
 
 
 1 MOTIVATION
@@ -70,6 +75,21 @@ We applied 5 steps in the data preparation :
 The system is fully functionnal and automated. You can run it by simply run the python script called "run.py". Alternatively, the Jupyter notebook called "run.ipynb" to get get the intermediary results and visualizations.
 
 
+5 CONTENTS
+==========
+  
+5.1 REPORT  
+----------
+The report is a PDF file that describes with more details how we came to develop and train our model.
+
+
+5.2 SCRIPTS FOLDER  
+------------------
+This folder contains all of our scripts and notebooky which are the following :
+
+5.2.1 PYTHON SCRIPTS : There are 5 python files to run our system. cleaner.py contains multiple functions to clean and transform the data to suit our needs. plots.py provides ways to visualize various aspects of the data (distributions, outliers, etc.). implementations.py contains the six Machine Learning algorithms required from the project description and run.py runs the full leanring process on the training data and uses it to make predictions on the testing data. There is also the proj1_help.py file which provides basic loading and writing functions.
+
+5.2.2 JUPYTER NOTEBOOKS : There are two Jupyter notebooks in the folder. run.ipynb simply runs the exact same code as run.py and data_analysis.ipnyb gives more details about how the data is cleaned and prepared, along with multiple visuals.
 
 
 
