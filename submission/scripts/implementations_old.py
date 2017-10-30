@@ -8,12 +8,12 @@ from types import SimpleNamespace
 
 
 def least_squares_GD(y, tx, initial_w, max_iters, gamma):
-    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=1, plot_losses=False, print_output=False, ouptut_step=1, costfunc=CostFunction.MSE)
+    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=1, plot_losses=False, print_output=True, ouptut_step=50, costfunc=CostFunction.MSE)
 
 
 def least_squares_SGD(y, tx, initial_w, max_iters, gamma):
     num_batches = tx.shape[0]
-    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=num_batches, plot_losses=False, print_output=False, ouptut_step=1, costfunc=CostFunction.MSE)
+    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=1, plot_losses=False, print_output=True, ouptut_step=50, costfunc=CostFunction.MSE)
 
 
 def least_squares(y, tx):
@@ -144,7 +144,6 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=
     
     # make sure w is of the correct shape
     initial_w = initial_w.reshape((-1, 1))
-    y = y.reshape((-1, 1))
     
     # if costfunc = LIKELIHOOD the y should be made only of 1s and 0s.
     if costfunc == CostFunction.LIKELIHOOD:
@@ -181,8 +180,6 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=
     n_iter = 0
     while n_iter < max_iters:
         for y_batch, tx_batch in batch_iter(y, tx, batch_size=batch_size, num_batches=num_batches):
-            if n_iter >= max_iters:
-                break;
             # Compute gradient and loss at the current step. 
             # The latter will be used just to check if the algorithm is converging
             
@@ -192,13 +189,13 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=
             
             if n_iter % ouptut_step == 0 or n_iter==max_iters-1:
                 curr_loss = compute_loss(y, tx, w, lambda_, costfunc=costfunc)
-
+                succ_ratio = compute_loss(y, tx, w, costfunc=CostFunction.SUCCESS_RATIO)
+                
                 if print_output:
-                    print("Gradient Descent({bi}/{ti}): loss={l}".format(
-                        bi=n_iter, ti=max_iters - 1, l=curr_loss))
+                    print("Gradient Descent({bi}/{ti}): loss={l}, prediction ratio={succ_ratio}".format(
+                        bi=n_iter, ti=max_iters - 1, l=curr_loss, succ_ratio=succ_ratio))
 
                 if plot_losses:
-                    succ_ratio = compute_loss(y, tx, w, costfunc=CostFunction.SUCCESS_RATIO)
                     axs[0].scatter(n_iter, curr_loss, color='red', s=10)
                     axs[1].scatter(n_iter, succ_ratio, color='blue', s=10)
             
@@ -208,7 +205,7 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=
         plt.tight_layout()
         plt.savefig("gradient descent")
         plt.show()
-        
+    
     return compute_loss(y, tx, w, lambda_, costfunc=costfunc), np.array(w)
 
 def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
