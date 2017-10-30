@@ -30,15 +30,15 @@ This README is organized as follows :
 
 
 1 MOTIVATION
-------------
+============
 This project aims at labelling at large dataset as either indicating the presence of a Higgs boson (signal) or as noise (background) by using Machine Learning techniques. 
 
 2 THE DATA
-----------
+==========
 The data was produced by a physical simulator imitating the results of an experiment conducted at CERN in Geneva. It contains 250'000 items, all of which have 30 features. Each items represents the result of two particles crashing into each other in CERN's Large Hadron Collider and each features represents one particular of said crash.
 
 3 SYSTEM OVERVIEW
------------------
+=================
 To perform our task, we have developped a Machine Learning system consisting of two main steps : data preparation and model training
 
 3.1 DATA PREPARATION
@@ -65,7 +65,7 @@ We applied 5 steps in the data preparation :
 
 
 4 RUNNING THE SYSTEM
---------------------
+====================
 
 The system is fully functionnal and automated. You can run it by simply run the python script called "run.py". Alternatively, the Jupyter notebook called "run.ipynb" to get get the intermediary results and visualizations.
 
