@@ -61,7 +61,7 @@ We applied 5 steps in the data preparation :
 
 3.2.1 ALGORITHM USED : We use the logistic regression algorithm using gradient descent
 
-3.2.1 HYPERPARAMETERS : ???
+3.2.1 HYPERPARAMETERS : We used a polynomial of degree 2 that, with other techinques to enrich our model, allowed us to score 83.2% of correct predictions. For more details please refer to the report. 
 
 
 4 RUNNING THE SYSTEM
