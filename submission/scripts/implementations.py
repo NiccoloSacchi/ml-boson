@@ -3,7 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from proj1_helpers import predict_labels
+from .proj1_helpers import predict_labels
 from types import SimpleNamespace 
 
 

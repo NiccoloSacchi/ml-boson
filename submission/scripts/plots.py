@@ -3,7 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from cleaner import column_labels
+from .cleaner import column_labels
 
 def plot_features(x, col_labels = column_labels(), title="occurrencies"):
     """ Plot the features after dropping the -999 values. Can be used to find outliers. """
