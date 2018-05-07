@@ -41,8 +41,9 @@ def column_labels_map():
     """ Return the column names. Use column_labels().index("DER_sum_pt") to retrieve the corresponding index """
     return {feature: index for index, feature in enumerate(column_labels())}
 
-def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_expansion=False, bool_col=False):
+def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_expansion=1, bool_col=False):
     """ Cleans the data:
+    0. Cap outliers.
     1. Sets the -999 values to nan.
     2. Standardizes.
     3. Splits using the jet number and drops useless columns.
@@ -50,19 +51,23 @@ def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_exp
     = True also adds a boolean column to indicate the position of those nans.
     5. Drops other columns depending on the given correlation "corr", e.g. if corr = 0.7 drops the
     maximum amount of columns such that there are no two columns whose |correlation| > 0.7.
-    6. If dimension_expansion = true also split every column into more columns (check the report for 
-    an explanation).
+    6. If dimension_expansion > 1 also split every column into more columns (check the report for 
+    an explanation). dimension_expansion must be an integeger in {1, 2, 4, 5, 10}.
     """
+    column_22 = dataset_all[:, 22].copy()
+    # 0.
+    dataset_all = move_outliers(dataset_all)
     
     # 1
     dataset_all[dataset_all==-999] = np.nan
     
     # 2.
     dataset_all = standardize_final(dataset_all)
+    dataset_all[:, 22] = column_22 # column 22 contains the jet number tha will be needed in the next step
     
     # 3.
     datasets, outputs = split_input_data(dataset_all, output_all)
-            
+    
     # 4. 
     for jet, dataset in datasets.items():
         nan_rows = np.isnan(dataset[:,0])
@@ -71,13 +76,16 @@ def clean_input_data(dataset_all, output_all=np.array([]), corr=1, dimension_exp
         # this information may still be usefull for determining the y
         if bool_col:
             datasets[jet] = np.column_stack((datasets[jet], nan_rows))
-    
+
     # 5. 
-    
+    # remaining_columns is needed in expand_dimensions to pick the correct percentiles of the remaining columns
+    datasets, remaining_columns = drop_with_corr(datasets, corr) 
+
     # 6.
-    if dimension_expansion:
-        datasets = expand_dimensions(datasets, bool_col) # pass also bool_col to know if the last one is a boolean column
-        
+    if dimension_expansion > 1:
+        # pass also bool_col to know if the last one is a boolean column
+        datasets = expand_dimensions(datasets, remaining_columns, dimension_expansion, bool_col) 
+
     return datasets, outputs
 
 def split_input_data(dataset_all, output_all=np.array([])):
@@ -103,6 +111,7 @@ def split_input_data(dataset_all, output_all=np.array([])):
     num_jets = 4
     datasets = {}
     outputs = {}
+    original_columns = {} # for every dataset keep which are the original columns
     for jet in range(num_jets):
         curr_dataset, curr_output = get_with_jet(dataset_all, output_all, jet)
         # drop columns depending on the jet, drop always the PRI_jet_num (column 22)
@@ -112,17 +121,19 @@ def split_input_data(dataset_all, output_all=np.array([])):
             to_drop = [4, 5, 6, 12, 22, 26, 27, 28]
         else:
             to_drop = [22]
-        
-        to_drop = to_drop
-        print("Jet", jet, "columns dropped:", to_drop)
+
         curr_dataset = np.delete(curr_dataset, to_drop, axis=1)
-        
+        to_drop = to_drop + [15, 16, 18, 20] # drop also equally distributed columns
+        to_drop.sort()
+        #print("Jet", jet, "columns dropped:", to_drop)
+
         datasets[jet] = curr_dataset
         outputs[jet] = curr_output
 
     return datasets, outputs
 
-def expand_dimensions(datasets, bool_col):
+def expand_dimensions(datasets, remaining_columns, N, bool_col):
+    """ Gven the dataset, split every column in N parts using the precomputed percentiles. """
     file_path = "metadata/percentiles.json"
     obj_text = codecs.open(file_path, 'r', encoding='utf-8').read()
     percentiles = json.loads(obj_text)
@@ -131,14 +142,42 @@ def expand_dimensions(datasets, bool_col):
         columns_to_be_splitted = range(curr_dataset.shape[1]-bool_col) # scan columns except the boolean one (if it was added)
         for col in columns_to_be_splitted: 
             c = curr_dataset[:, col].copy() # column to be splitted
-            col_perc = percentiles[str(jet)][str(col)]
+            col_perc = percentiles[str(jet)][str(remaining_columns[jet][col])]
             #print([p for p in col_perc if (int(p)%50 == 0 and int(p) != 0)])
-            for perc in [col_perc[p] for p in col_perc if (int(p)%50 == 0 and int(p) != 0)]:
+            for perc in percentiles_to_scan(col_perc, N):
                 vals = (c<=perc)
                 curr_dataset = np.column_stack((curr_dataset, vals*c))
                 c = c*(~vals)
         datasets[jet] = np.delete(curr_dataset, columns_to_be_splitted, axis=1)
     return datasets
+
+def percentiles_to_scan(col_perc, N):
+    if N == 1:
+        return [col_perc["100"]]
+    if N == 2:
+        return [col_perc["50"], col_perc["100"]]
+    if N == 4:
+        return [col_perc[p] for p in col_perc if (int(p)%25 == 0 and int(p) != 0)]
+    if N == 5:
+        return [col_perc[p] for p in col_perc if (int(p)%20 == 0 and int(p) != 0)]
+    if N == 10:
+        return [col_perc[p] for p in col_perc if (int(p)%10 == 0 and int(p) != 0)]
+    print("Invalid dimension_expansion parameter, it should be in {1, 2, 4, 5, 10}")
+
+def drop_with_corr(datasets, corr):
+    remaining_columns = {}
+    for jet in datasets: 
+        to_drop = correlated(jet, corr)
+        
+        remaining_columns[jet] = list(set(range(datasets[jet].shape[1])) - set(to_drop))
+        remaining_columns[jet].sort()
+        
+        if len(to_drop) > 0:
+            print("Jet", jet, "correlated columns dropped:", to_drop)
+        datasets[jet] = np.delete(datasets[jet], to_drop, axis=1)
+        
+    return datasets, remaining_columns
+        
 
 # helper function that, given a minimum correlation, return the list of columns that can be dropped 
 def correlated(jet, corr):
@@ -152,15 +191,17 @@ def correlated(jet, corr):
             0.8: [5],
             0.85: [5],
             0.9: [5],
-            0.95: [5]
+            0.95: [5],
+            1: []
         },
         1: {
             0.7: [6, 12, 17, 18, 21],
             0.75: [3, 17, 18, 21],
             0.8: [6, 18, 21],
             0.85: [6, 18, 21],
-            0.9: [3, 6, 21],
-            0.95: [21]
+            0.9: [3, 6, 21], 
+            0.95: [21],
+            1: []
         },
         2: {
             0.7: [5, 6, 9, 16, 19, 21, 22, 28],
@@ -168,7 +209,8 @@ def correlated(jet, corr):
             0.8: [5, 6, 21, 22, 28],
             0.85: [6, 21, 22, 28],
             0.9: [22, 28],
-            0.95: [28]
+            0.95: [28],
+            1: []
         },
         3: {
             0.7: [5, 6, 16, 19, 21, 22, 25, 28],
@@ -176,7 +218,8 @@ def correlated(jet, corr):
             0.8: [9, 21, 22, 25],
             0.85: [21, 22, 28],
             0.9: [21, 28],
-            0.95: [28]
+            0.95: [28],
+            1: []
         }
     }[jet][corr]
 
@@ -210,7 +253,7 @@ def whole_data_std_devs():
           2.03190029e+00,   1.81616637e+00,   1.00796644e+02]
 
 def move_outliers(x):
-    print("Managing the outliers")
+    print("Capping the outliers")
     # DER_mass_MMC
     x[x[:, 0] > 700] = 700
     
@@ -256,4 +299,48 @@ def move_outliers(x):
     # PRI_jet_all_pt
     x[x[:, 29] > 800] = 800
     
+    return x
+
+
+def concatenate_log(xs, mean_log=[], std_log=[]):
+    """ Compute the log of the dataset and and concatenate both of them after
+    standadizing it.
+    It also returns the means and the stds that must be used to standardize in 
+    teh same way the test set (with standardize_test)."""
+
+    train = False
+    if len(mean_log) == 0:
+        train = True
+        
+    for jet in range(4):
+        d = xs[jet].copy()
+        log_me = np.abs(d)
+        log_me[log_me < 1e-320] = 1 # just to avoid that the log returns -Inf
+        xs_log = np.log(log_me)
+
+        if train:              # if so then we are standardizing the train set 
+            xs_log, mean_, std_ = standardize_train(xs_log)
+            mean_log.append(mean_)
+            std_log.append(std_)
+        else:                  # otherwise we are standardizing the test set (and we have to use the passed values)
+            xs_log = standardize_test(xs_log, mean_log[jet], std_log[jet])
+        
+        xs_log[np.isnan(xs_log)] = 0
+        xs[jet] = np.column_stack((xs[jet], xs_log)) 
+    return xs, mean_log, std_log
+    
+def standardize_train(x):
+    """ Standardize the train data set. """
+    mean_x = np.nanmean(x, axis=0)
+    x = x - mean_x
+    std_x = np.nanstd(x, axis=0)
+    x = x / (std_x + (std_x==0))
+    return x, mean_x, std_x
+
+def standardize_test(x, mean_x, std_x):
+    """Standardize the test set, pass the mean and std 
+    used to standardize the train set. """
+    # compute mean and std ignoring nan values
+    x = x - mean_x
+    x = x / (std_x + (std_x==0))
     return x

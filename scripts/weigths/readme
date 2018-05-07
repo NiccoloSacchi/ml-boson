@@ -1,3 +1,0 @@
-Here I store the weigths for the logistic regression to avoid training it again.
-no_perc: no dimension expansion
-with_perc[i]: dimension expansion, every dimension has been splitted in i parts

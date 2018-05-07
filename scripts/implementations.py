@@ -2,9 +2,45 @@
 """ Machine learning functions """
 
 import numpy as np
-from proj1_helpers import predict_labels
+import matplotlib.pyplot as plt
+from .proj1_helpers import predict_labels
 from types import SimpleNamespace 
 
+
+def least_squares_GD(y, tx, initial_w, max_iters, gamma):
+    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=1, plot_losses=False, print_output=False, ouptut_step=1, costfunc=CostFunction.MSE)
+
+
+def least_squares_SGD(y, tx, initial_w, max_iters, gamma):
+    num_batches = tx.shape[0]
+    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=num_batches, plot_losses=False, print_output=False, ouptut_step=1, costfunc=CostFunction.MSE)
+
+
+def least_squares(y, tx):
+    A = tx.T @ tx
+    b = tx.T @ y
+    w = np.linalg.solve(A, b)
+    return compute_loss(y, tx, w, costfunc=CostFunction.MSE), w
+
+
+def ridge_regression(y, tx, lambda_):
+    A = tx.T @ tx + 2*tx.shape[0]*lambda_*np.identity(tx.shape[1]) # DxD
+    b = tx.T @ y # Dx1
+    try:
+        w = np.linalg.solve(A, b)
+        return compute_loss(y, tx, w, costfunc=CostFunction.MSE), w
+    except Exception as e:
+        print("When solving the system in ridge regression: " + str(e))
+        return -1, np.zeros(tx.shape[1])
+
+    
+def logistic_regression(y, tx, initial_w, max_iters, gamma):
+    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=1, plot_losses=False, print_output=True, ouptut_step=50, costfunc=CostFunction.LIKELIHOOD)
+
+
+def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
+    return gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=lambda_, num_batches=1, plot_losses=False, print_output=False, ouptut_step=100, costfunc=CostFunction.LIKELIHOOD)
+    
     
 #### BUILD TX
 def build_poly(x, degree):
@@ -25,11 +61,6 @@ class CostFunction():
     LIKELIHOOD = 4 
     SUCCESS_RATIO = 5
 
-def compute_error(y, tx, w): 
-    """ Compute the error e=y-X.T*w """
-    # the error is independent from the used cost function 
-    return y - tx @ w
-
 def logistic_func(z):
     """ Logistic function used to map y to [0, 1]. f(z) = 1/(1+e^-z) """
     return 1 / (1 + np.exp(-z))
@@ -39,7 +70,7 @@ def compute_loss(y, tx, w, lambda_=0, costfunc=CostFunction.MSE):
     """ Compute the cost L(w) from scratch and depending on the chosen cost function. """
     
     if costfunc is CostFunction.MSE:
-        return compute_loss_with_error(compute_error(y, tx, w), CostFunction.MSE)
+        return np.squeeze(compute_loss_with_error(compute_error(y, tx, w), CostFunction.MSE))
     
     if costfunc is CostFunction.RMSE:
         return np.sqrt(2*compute_loss(y, tx, w, costfunc=CostFunction.MSE))
@@ -51,7 +82,7 @@ def compute_loss(y, tx, w, lambda_=0, costfunc=CostFunction.MSE):
         # if lambda_ != 0 then we copute the penalized one
         prob = logistic_func(tx @ w)
         log_likelihood = np.squeeze((y.T @ np.log(prob) + (1 - y).T @ np.log(1 - prob)))
-        return -log_likelihood + lambda_ * np.squeeze(w.T.dot(w))
+        return -log_likelihood + lambda_ * np.squeeze(w.T @ w)
     
     if costfunc is CostFunction.SUCCESS_RATIO:
         # Given the weigths and a test set it compute the prediction for every input
@@ -66,16 +97,23 @@ def compute_loss(y, tx, w, lambda_=0, costfunc=CostFunction.MSE):
         return num_correct/len(y)
     
     return "Error, cost function not recognized"
-    
+
 def compute_loss_with_error(e, costfunc=CostFunction.MSE):
     """ Compute the cost L(w) from the given error and depending on the chosen cost function """
     if costfunc is CostFunction.MSE:
         return e.T @ e/(2*len(e))
+    
     if costfunc is CostFunction.RMSE:
         return np.sqrt(2*compute_loss_with_error(e, costfunc=CostFunction.MSE))
+    
     if costfunc is CostFunction.MAE:
         return np.mean(np.abs(e))
     return "Error, cost function not recognized"
+
+def compute_error(y, tx, w): 
+    """ Compute the error e=y-X.T*w """
+    # the error is independent from the used cost function 
+    return y - tx @ w
 
 ####
 
@@ -90,13 +128,23 @@ def compute_gradient(y, tx, w, costfunc=CostFunction.MSE):
         return compute_gradient_with_e(tx, compute_error(y, tx, w))
     
     if costfunc is CostFunction.LIKELIHOOD:
+        #print(tx.shape, w.shape, y.shape) log_func = np.vectorize(logistic_func)
         return tx.T @ (logistic_func(tx @ w)- y)
     
     return "Error, cost function not recognized"
 
+def compute_gradient_with_e(tx, e):
+    """ Compute the gradient (derivative of L(w) dimensions) from X and error. 
+    N.B. To be used only with a differentiable cost function, e.g. with MSE, not with MAE. """
+    return - tx.T @ e / len(e)
+
 def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=1, plot_losses=True, print_output=True, ouptut_step=100, costfunc=CostFunction.MSE):
     """ w(t+1) = w(t)-gamma*gradient(L(w)) where L(w) is the chosen cost function in {CostFunction.MSE, CostFunction.LIKELIHOOD}. Each iteration can be done on a subset of variables depending on the given num_batches: if batch_size=N then the the dataset will be randomly splitted in N parts that will be used for the next N iterations, the
     process reiterates until max_iters is reached. lambda_ is the parameter for the penalized logistic regression """
+    
+    # make sure w is of the correct shape
+    initial_w = initial_w.reshape((-1, 1))
+    y = y.reshape((-1, 1))
     
     # if costfunc = LIKELIHOOD the y should be made only of 1s and 0s.
     if costfunc == CostFunction.LIKELIHOOD:
@@ -121,20 +169,20 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=
             ax.grid()
             ax.set_xlabel('iteration n')
         axs[0].set_title('Loss')
-        #axs[0].set_yscale('log')
         axs[0].set_ylabel('loss')
         
         axs[1].set_title('Prediction ratio')        
         axs[1].set_ylabel('ratio')
+        axs[1].set_ylim([0.5, 1])
         
 
     w = initial_w
-    loss_min = float('inf') 
-    w_best = [] 
     batch_size = int(y.shape[0]/num_batches)
     n_iter = 0
     while n_iter < max_iters:
         for y_batch, tx_batch in batch_iter(y, tx, batch_size=batch_size, num_batches=num_batches):
+            if n_iter >= max_iters:
+                break;
             # Compute gradient and loss at the current step. 
             # The latter will be used just to check if the algorithm is converging
             
@@ -142,42 +190,26 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma, lambda_=0, num_batches=
             g = compute_gradient(y_batch, tx_batch, w, costfunc=costfunc) # relative to only the batch
             w = w - gamma*g  
 
-            # compute the loss L(w)
-            curr_loss = compute_loss(y_batch, tx_batch, w, costfunc=costfunc) # relative to all the points
-            if curr_loss < loss_min:
-                loss_min = curr_loss
-                w_best = w
-            
-            if n_iter % ouptut_step == 0:
-                curr_loss = compute_loss(y, tx, w_best, lambda_, costfunc=costfunc)
-                succ_ratio = compute_loss(y, tx, w_best, costfunc=CostFunction.SUCCESS_RATIO)
+            if n_iter % ouptut_step == 0 or n_iter==max_iters-1:
+                curr_loss = compute_loss(y, tx, w, lambda_, costfunc=costfunc)
+
                 if print_output:
-                    print("Gradient Descent({bi}/{ti}): loss={l}, prediction ratio={succ_ratio}".format(
-                        bi=n_iter, ti=max_iters - 1, l=curr_loss, succ_ratio=succ_ratio))
+                    print("Gradient Descent({bi}/{ti}): loss={l}".format(
+                        bi=n_iter, ti=max_iters - 1, l=curr_loss))
 
                 if plot_losses:
+                    succ_ratio = compute_loss(y, tx, w, costfunc=CostFunction.SUCCESS_RATIO)
                     axs[0].scatter(n_iter, curr_loss, color='red', s=10)
                     axs[1].scatter(n_iter, succ_ratio, color='blue', s=10)
             
             n_iter += 1
-        
-    if n_iter-1 % ouptut_step != 0:
-        curr_loss = compute_loss(y, tx, w_best, lambda_, costfunc=costfunc)
-        succ_ratio = compute_loss(y, tx, w_best, costfunc=CostFunction.SUCCESS_RATIO)
-        if print_output:
-            print("Gradient Descent({bi}/{ti}): loss={l}, prediction ratio={succ_ratio}".format(
-                bi=n_iter-1, ti=max_iters - 1, l=curr_loss, succ_ratio=succ_ratio))
-
-        if plot_losses:
-            axs[0].scatter(n_iter, curr_loss, color='red', s=10)
-            axs[1].scatter(n_iter, succ_ratio, color='blue', s=10)
                     
     if plot_losses:
         plt.tight_layout()
         plt.savefig("gradient descent")
         plt.show()
-    
-    return loss_min, np.array(w_best)
+        
+    return compute_loss(y, tx, w, lambda_, costfunc=costfunc), np.array(w)
 
 def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
     """
@@ -210,28 +242,6 @@ def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
             if start_index != end_index:
                 yield shuffled_y[start_index:end_index], shuffled_tx[start_index:end_index]
 
-##
-
-def least_squares(y, tx):
-    """ Compute the least squares solution."""
-#     w = np.linalg.inv(tx.T @ tx) @ tx.T @ y
-    # returns the optimal weights
-    A = tx.T @ tx
-    b = tx.T @ y
-    w = np.linalg.solve(A, b)
-    return compute_loss(y, tx, w, costfunc=CostFunction.MSE), w
-
-""" Ridge regression """
-def ridge_regression(y, tx, lambda_):
-    """ Implement the ridge regression """
-    A = tx.T @ tx + 2*tx.shape[0]*lambda_*np.identity(tx.shape[1]) # DxD
-    b = tx.T @ y # Dx1
-    try:
-        w = np.linalg.solve(A, b)
-        return compute_loss(y, tx, w, costfunc=CostFunction.MSE), w
-    except Exception as e:
-        print("When solving the system in ridge regression: " + str(e))
-        return -1, np.zeros(tx.shape[1])
 
 ####
 
